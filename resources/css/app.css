@@ -1,0 +1,109 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-uva-blue: #232d4b;
+    --color-uva-blue-dark: #1a2239;
+    --color-uva-orange: #f84c1e;
+    --color-uva-orange-dark: #d83f17;
+    --color-uva-cream: #f8f6f2;
+    --color-uva-electric: #4f6fff;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    @apply font-sans text-slate-100;
+    background:
+        radial-gradient(1000px 500px at 10% -10%, rgb(79 111 255 / 25%), transparent 60%),
+        radial-gradient(900px 450px at 100% 0%, rgb(248 76 30 / 30%), transparent 60%),
+        linear-gradient(180deg, #111a30 0%, #1c2847 45%, #111a30 100%);
+}
+
+.input {
+    @apply rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-white outline-none backdrop-blur-sm ring-uva-orange/60 transition duration-300 focus:ring-2;
+}
+
+select.input {
+    @apply bg-slate-900/70 text-slate-100;
+}
+
+select.input option {
+    background-color: #111a30;
+    color: #f8fafc;
+}
+
+.card {
+    @apply rounded-2xl border border-white/20 bg-white/10 shadow-xl backdrop-blur-md;
+}
+
+.button-primary {
+    @apply rounded-xl bg-uva-orange px-4 py-2 font-semibold text-white transition duration-300 hover:scale-[1.02] hover:bg-uva-orange-dark;
+}
+
+.button-secondary {
+    @apply rounded-xl bg-uva-blue px-4 py-2 font-semibold text-white transition duration-300 hover:scale-[1.02] hover:bg-uva-blue-dark;
+}
+
+.glow-title {
+    background: linear-gradient(90deg, #ffffff 0%, #f8f6f2 35%, #f84c1e 70%, #4f6fff 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow:
+        0 0 16px rgb(248 76 30 / 30%),
+        0 0 24px rgb(79 111 255 / 30%);
+    animation: shine 5s linear infinite;
+}
+
+.brand-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-link::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 120%;
+    height: 180%;
+    transform: translate(-50%, -50%);
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgb(248 151 126 / 0.24) 0%, rgb(248 151 126 / 0) 72%);
+    opacity: 0;
+    transition: opacity 280ms ease;
+    pointer-events: none;
+}
+
+.brand-link:hover::before {
+    opacity: 1;
+}
+
+@keyframes shine {
+    0% {
+        background-position: 0 50%;
+    }
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+* {
+    transition:
+        background-color 220ms ease,
+        border-color 220ms ease,
+        transform 220ms ease,
+        box-shadow 220ms ease;
+}
