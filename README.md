@@ -1,6 +1,13 @@
 # Notifix
 
-Notifix is a full-stack web app for UVA Engineering Foundations students to browse and join office hours, request appointments, and view TA bios.
+Notifix is a full-stack web app for UVA Engineering Foundations students to:
+
+- view weekly and calendar-based office hours
+- join office hours (attendance count updates)
+- submit appointment requests
+- view and manage TA bios
+
+This project is built with a Laravel API backend and a Vue 3 frontend with a UVA-inspired design.
 
 ## Tech Stack
 
@@ -9,13 +16,13 @@ Notifix is a full-stack web app for UVA Engineering Foundations students to brow
 - Styling: Tailwind CSS
 - Database: SQLite (default dev setup, easy to switch to MySQL)
 
-## Features
+## Core Features
 
 - Homepage with weekly office hours, join action, and collapsible About section
-- Office hours calendar page with add/edit/delete/join support
-- Appointment request form with persistent storage and confirmation
-- TA bios page with add/edit/delete support
-- Account page with simple register/login API flow
+- Office Hours page with weekly calendar layout and add/edit/delete/join support
+- Appointments page with persistent request submission and edit/delete support
+- TA Bios page with add/edit/delete support
+- Account page with login UI (register section removed from UI)
 - Shared navigation across all pages
 
 ## API Endpoints
@@ -27,27 +34,66 @@ Notifix is a full-stack web app for UVA Engineering Foundations students to brow
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 
-## Local Setup
+## Repository
 
-1. Install PHP, Composer, and Node.js.
-2. Install backend dependencies:
-   - `composer install`
-3. Install frontend dependencies:
-   - `npm install`
-4. Copy env file (if missing):
-   - `copy .env.example .env`
-5. Generate app key:
-   - `php artisan key:generate`
-6. Run migrations:
-   - `php artisan migrate`
-7. Start Laravel server:
-   - `php artisan serve`
-8. In another terminal, start Vite:
-   - `npm run dev`
-9. Open:
-   - `http://127.0.0.1:8000`
+- GitHub: [https://github.com/mohamad12-89/uva-notifix](https://github.com/mohamad12-89/uva-notifix)
+
+## Clone and Run (New Environment)
+
+### 1) Clone the project
+
+```bash
+git clone https://github.com/mohamad12-89/uva-notifix.git
+cd uva-notifix
+```
+
+### 2) Install dependencies
+
+```bash
+composer install
+npm install
+```
+
+### 3) Configure environment
+
+Create `.env` if needed:
+
+- Windows PowerShell:
+  - `copy .env.example .env`
+- macOS/Linux:
+  - `cp .env.example .env`
+
+Generate app key and run migrations:
+
+```bash
+php artisan key:generate
+php artisan migrate
+```
+
+### 4) Start the app (single command)
+
+```bash
+npm run dev:full
+```
+
+This command starts:
+
+- PHP server: `http://127.0.0.1:8080`
+- Vite frontend dev server (auto-selects open port)
+
+Open the app in your browser:
+
+- [http://127.0.0.1:8080](http://127.0.0.1:8080)
+
+## Available Scripts
+
+- `npm run dev` - start Vite only
+- `npm run serve:php` - start PHP server only
+- `npm run dev:full` - start PHP + Vite together (recommended)
+- `npm run build` - production frontend build
 
 ## Notes
 
 - SQLite is configured by default for development.
 - To switch to MySQL, update `.env` DB settings and run `php artisan migrate:fresh`.
+- If ports are busy, Vite automatically uses the next available port.
