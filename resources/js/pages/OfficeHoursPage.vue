@@ -2,7 +2,10 @@
   <section class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-3xl font-bold text-uva-orange">Office Hours Calendar</h2>
-      <button class="button-secondary" @click="showForm = !showForm">
+      <button
+        class="button-secondary cursor-pointer"
+        @click="showForm = !showForm"
+      >
         Add Office Hours
       </button>
     </div>
@@ -26,7 +29,7 @@
       />
       <input v-model="form.date" required class="input" type="date" />
       <input v-model="form.time" required class="input" type="time" />
-      <button class="button-primary md:col-span-2" type="submit">
+      <button class="button-primary md:col-span-2 cursor-pointer" type="submit">
         Save Office Hour
       </button>
     </form>
@@ -71,7 +74,7 @@
                     :class="
                       joinedSessions.includes(slot.id)
                         ? 'bg-uva-orange/50 cursor-not-allowed'
-                        : 'bg-uva-orange'
+                        : 'bg-uva-orange cursor-pointer'
                     "
                     :disabled="joinedSessions.includes(slot.id)"
                     @click="join(slot.id)"
@@ -79,13 +82,13 @@
                     {{ joinedSessions.includes(slot.id) ? "Joined" : "Join" }}
                   </button>
                   <button
-                    class="flex-auto rounded bg-slate-600 px-1 py-1 text-center text-white"
+                    class="flex-auto rounded bg-slate-600 px-1 py-1 text-center text-white cursor-pointer"
                     @click="startEdit(slot)"
                   >
                     Edit
                   </button>
                   <button
-                    class="flex-auto rounded bg-red-600 px-1 py-1 text-center text-white"
+                    class="flex-auto rounded bg-red-600 px-1 py-1 text-center text-white cursor-pointer"
                     @click="remove(slot.id)"
                   >
                     Delete

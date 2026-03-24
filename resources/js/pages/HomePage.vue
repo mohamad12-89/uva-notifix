@@ -18,7 +18,7 @@
         </h3>
         <button
           @click="isCalendarView = !isCalendarView"
-          class="button-secondary"
+          class="button-secondary cursor-pointer"
         >
           {{ isCalendarView ? "Show List View" : "View Calendar View" }}
         </button>
@@ -48,6 +48,7 @@
                 'opacity-50 cursor-not-allowed': joinedSessions.includes(
                   slot.id,
                 ),
+                'cursor-pointer': !joinedSessions.includes(slot.id),
               }"
               @click="join(slot.id)"
             >
@@ -87,7 +88,7 @@
                 :class="
                   joinedSessions.includes(slot.id)
                     ? 'bg-uva-orange/50 cursor-not-allowed'
-                    : 'bg-uva-orange hover:bg-orange-600'
+                    : 'bg-uva-orange hover:bg-orange-600 cursor-pointer'
                 "
                 :disabled="joinedSessions.includes(slot.id)"
                 @click="join(slot.id)"
@@ -105,7 +106,7 @@
 
     <div class="relative mx-auto mt-auto mb-12 flex w-full justify-center">
       <button
-        class="group w-fit rounded-full border border-uva-orange/40 bg-gradient-to-r from-uva-blue/30 to-uva-orange/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-uva-orange shadow-[0_0_0_rgba(248,76,30,0)] backdrop-blur-md transition-all duration-500 hover:-translate-y-0.5 hover:border-uva-orange/70 hover:shadow-[0_0_20px_rgba(248,76,30,0.45)]"
+        class="group w-fit rounded-full border border-uva-orange/40 bg-gradient-to-r from-uva-blue/30 to-uva-orange/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-uva-orange shadow-[0_0_0_rgba(248,76,30,0)] backdrop-blur-md transition-all duration-500 hover:-translate-y-0.5 hover:border-uva-orange/70 hover:shadow-[0_0_20px_rgba(248,76,30,0.45)] cursor-pointer"
         type="button"
         @click="aboutOpen = !aboutOpen"
       >
