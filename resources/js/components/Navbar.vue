@@ -21,14 +21,23 @@
           {{ item.label }}
         </RouterLink>
       </div>
+      <div
+        v-if="initials"
+        class="ml-3 flex h-10 w-10 items-center justify-center rounded-full border border-uva-orange/60 bg-uva-orange/15 text-sm font-bold text-uva-orange shadow-[0_0_18px_rgba(248,76,30,0.25)]"
+        :title="authProfile?.email || 'Verified user'"
+      >
+        {{ initials }}
+      </div>
     </div>
   </nav>
 </template>
 
 <script setup>
 import { useRoute } from "vue-router";
+import { useAuthProfile } from "../composables/useAuthProfile";
 
 const route = useRoute();
+const { initials, authProfile } = useAuthProfile();
 
 const navItems = [
   { to: "/office-hours", label: "Office Hours" },

@@ -8,6 +8,8 @@ import AppointmentsPage from "./pages/AppointmentsPage.vue";
 import TaBiosPage from "./pages/TaBiosPage.vue";
 import AccountPage from "./pages/AccountPage.vue";
 import InstructorDashboard from "./pages/InstructorDashboard.vue";
+import SignupPage from "./pages/SignupPage.vue";
+import { isUserVerified } from "./composables/useAuthProfile";
 
 // Apply a global CSS rule to make all buttons use the pointer cursor
 const style = document.createElement("style");
@@ -21,6 +23,7 @@ document.head.appendChild(style);
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: "/signup", component: SignupPage },
     { path: "/", component: HomePage },
     { path: "/office-hours", component: OfficeHoursPage },
     { path: "/appointments", component: AppointmentsPage },
@@ -28,6 +31,13 @@ const router = createRouter({
     { path: "/account", component: AccountPage },
     { path: "/instructor-dashboard", component: InstructorDashboard },
   ],
+});
+
+router.beforeEach((to) => {
+  const isVerified = isUserVerified();
+  if (!isVerified && to.path !== "/signup") return "/signup";
+  if (isVerified && to.path === "/signup") return "/";
+  return true;
 });
 
 createApp(App).use(router).mount("#app");
