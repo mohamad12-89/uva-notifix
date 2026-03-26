@@ -31,6 +31,7 @@ import { useRoute } from "vue-router";
 const route = useRoute();
 
 const navItems = [
+  { to: "/announcements", label: "Announcements" },
   { to: "/office-hours", label: "Office Hours" },
   { to: "/appointments", label: "Appointments" },
   { to: "/ta-bios", label: "TA Bios" },

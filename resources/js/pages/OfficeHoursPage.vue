@@ -3,9 +3,7 @@
     <div
       class="grid w-full grid-cols-1 items-center gap-3 md:grid-cols-[auto_1fr_auto]"
     >
-      <h2 class="text-3xl font-bold text-uva-orange">
-        Office Hours Calendar
-      </h2>
+      <h2 class="text-3xl font-bold text-uva-orange">Office Hours Calendar</h2>
 
       <div class="relative flex justify-center">
         <input
@@ -43,11 +41,15 @@
               </p>
             </div>
             <p class="mt-0.5 text-xs text-slate-300">
-              {{ s.location }} · {{ s.dateLabel }} · Attendees: {{ s.attendance_count }}
+              {{ s.location }} · {{ s.dateLabel }} · Attendees:
+              {{ s.attendance_count }}
             </p>
           </div>
 
-          <div v-if="!suggestions.length" class="px-4 py-3 text-xs text-slate-400">
+          <div
+            v-if="!suggestions.length"
+            class="px-4 py-3 text-xs text-slate-400"
+          >
             No matches
           </div>
         </div>
@@ -58,14 +60,31 @@
       </button>
     </div>
 
+    <div
+      v-if="saveSuccess"
+      class="rounded-lg border border-green-500/30 bg-green-500/20 p-3 text-center text-sm font-medium text-green-400"
+    >
+      Office hour successfully saved!
+    </div>
+
     <form
       v-if="showForm"
       class="card space-y-4 p-5"
       @submit.prevent="submitForm"
     >
+      <div
+        v-if="errorMessage"
+        class="rounded-md border border-red-500/30 bg-red-500/20 p-3 text-sm text-red-400"
+      >
+        {{ errorMessage }}
+      </div>
+
       <div class="grid gap-3 md:grid-cols-2">
         <div class="space-y-1 w-full">
-          <label for="office-hour-ta-name" class="text-sm font-medium text-slate-200">
+          <label
+            for="office-hour-ta-name"
+            class="text-sm font-medium text-slate-200"
+          >
             TA Name
           </label>
           <input
@@ -77,7 +96,10 @@
           />
         </div>
         <div class="space-y-1 w-full">
-          <label for="office-hour-location" class="text-sm font-medium text-slate-200">
+          <label
+            for="office-hour-location"
+            class="text-sm font-medium text-slate-200"
+          >
             Location
           </label>
           <input
@@ -92,7 +114,10 @@
 
       <div class="grid gap-3 md:grid-cols-3">
         <div class="space-y-1 w-full">
-          <label for="office-hour-date" class="text-sm font-medium text-slate-200">
+          <label
+            for="office-hour-date"
+            class="text-sm font-medium text-slate-200"
+          >
             Date
           </label>
           <input
@@ -104,7 +129,10 @@
           />
         </div>
         <div class="space-y-1 w-full">
-          <label for="office-hour-start-time" class="text-sm font-medium text-slate-200">
+          <label
+            for="office-hour-start-time"
+            class="text-sm font-medium text-slate-200"
+          >
             Start Time
           </label>
           <input
@@ -116,7 +144,10 @@
           />
         </div>
         <div class="space-y-1 w-full">
-          <label for="office-hour-end-time" class="text-sm font-medium text-slate-200">
+          <label
+            for="office-hour-end-time"
+            class="text-sm font-medium text-slate-200"
+          >
             End Time
           </label>
           <input
@@ -149,7 +180,9 @@
             :key="day.key"
             :id="day.inMonth ? `day-${day.key}` : undefined"
             class="min-h-36 rounded-xl border border-white/20 bg-white/10 p-3 shadow-sm transition"
-            :class="day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'"
+            :class="
+              day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'
+            "
           >
             <p
               v-if="day.inMonth"
@@ -179,9 +212,7 @@
                     "
                     @click="toggleJoin(slot.id)"
                   >
-                    {{
-                      joinedSessions.includes(slot.id) ? "Unjoin" : "Join"
-                    }}
+                    {{ joinedSessions.includes(slot.id) ? "Unjoin" : "Join" }}
                   </button>
                   <button
                     class="flex-auto rounded bg-slate-600 px-1 py-1 text-center text-white"
@@ -228,8 +259,16 @@ const searchInputEl = ref(null);
 const searchFocused = ref(false);
 const highlightedIndex = ref(0);
 const highlightedDate = ref(null);
-const form = reactive({ ta_name: "", location: "", date: "", time: "", end_time: "" });
+const form = reactive({
+  ta_name: "",
+  location: "",
+  date: "",
+  time: "",
+  end_time: "",
+});
 let searchCloseTimer = null;
+const saveSuccess = ref(false);
+const errorMessage = ref("");
 
 const resetForm = () => {
   form.ta_name = "";
@@ -238,18 +277,38 @@ const resetForm = () => {
   form.time = "";
   form.end_time = "";
   editingId.value = null;
+  errorMessage.value = "";
 };
 
 const submitForm = async () => {
-  const payload = { ...form };
-  if (editingId.value) {
-    await api.put(`/office-hours/${editingId.value}`, payload);
-  } else {
-    await api.post("/office-hours", payload);
+  errorMessage.value = "";
+
+  // Frontend validation for time
+  if (form.time && form.end_time && form.time >= form.end_time) {
+    errorMessage.value = "The end time must be after the start time.";
+    return;
   }
-  resetForm();
-  showForm.value = false;
-  await fetchOfficeHours();
+
+  try {
+    const payload = { ...form };
+    if (editingId.value) {
+      await api.put(`/office-hours/${editingId.value}`, payload);
+    } else {
+      await api.post("/office-hours", payload);
+    }
+    resetForm();
+    showForm.value = false;
+    saveSuccess.value = true;
+    setTimeout(() => {
+      saveSuccess.value = false;
+    }, 3000);
+    await fetchOfficeHours();
+  } catch (error) {
+    console.error("Failed to save office hour:", error);
+    errorMessage.value =
+      error.response?.data?.message ||
+      "An error occurred while saving. Please try again.";
+  }
 };
 
 const startEdit = (slot) => {
@@ -298,7 +357,10 @@ const formatTimeRange = (startTime, endTime) => {
   const [eh, em] = endTime.slice(0, 5).split(":").map(Number);
   const end = new Date(2000, 0, 1, eh, em, 0, 0);
 
-  const fmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+  const fmt = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
   return `${fmt.format(start)} – ${fmt.format(end)}`;
 };
 
@@ -312,11 +374,16 @@ const guessEndTime = (startTime, durationMinutes = 60) => {
 };
 
 const formatTimeRangeFromSlot = (slot) => {
-  const end = slot.end_time ?? guessEndTime(slot.time, slot.duration_minutes ?? 60);
+  const end =
+    slot.end_time ?? guessEndTime(slot.time, slot.duration_minutes ?? 60);
   return formatTimeRange(slot.time, end);
 };
 
-const dateLabel = (yyyyMmDd) => new Date(`${yyyyMmDd}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const dateLabel = (yyyyMmDd) =>
+  new Date(`${yyyyMmDd}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 
 const normalizedQuery = computed(() => searchQuery.value.trim().toLowerCase());
 
@@ -326,7 +393,8 @@ const suggestions = computed(() => {
   const q = normalizedQuery.value;
   return officeHours.value
     .filter((slot) => {
-      const hay = `${slot.ta_name} ${slot.location} ${slot.date} ${slot.time} ${slot.end_time ?? ""}`.toLowerCase();
+      const hay =
+        `${slot.ta_name} ${slot.location} ${slot.date} ${slot.time} ${slot.end_time ?? ""}`.toLowerCase();
       return hay.includes(q);
     })
     .slice(0, 8)
@@ -337,7 +405,9 @@ const suggestions = computed(() => {
     }));
 });
 
-const showSuggestions = computed(() => searchFocused.value && normalizedQuery.value.length > 0);
+const showSuggestions = computed(
+  () => searchFocused.value && normalizedQuery.value.length > 0,
+);
 
 const closeSearch = () => {
   searchFocused.value = false;
@@ -360,7 +430,8 @@ const onSearchBlur = () => {
 const moveSelection = (delta) => {
   if (!suggestions.value.length) return;
   const next = highlightedIndex.value + delta;
-  highlightedIndex.value = (next + suggestions.value.length) % suggestions.value.length;
+  highlightedIndex.value =
+    (next + suggestions.value.length) % suggestions.value.length;
 };
 
 const selectHighlighted = () => {
@@ -443,9 +514,7 @@ const calendarWeeks = computed(() => {
         key: dateStr,
         inMonth: true,
         label,
-        slots: officeHours.value.filter(
-          (slot) => slot.date === dateStr,
-        ),
+        slots: officeHours.value.filter((slot) => slot.date === dateStr),
       };
     });
 

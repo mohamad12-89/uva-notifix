@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Announcement;
 use App\Models\OfficeHour;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -19,13 +20,25 @@ class OfficeHourController extends Controller
             'ta_name' => 'required|string',
             'date' => 'required|date',
             'time' => 'required',
-            'end_time' => 'required',
+            'end_time' => 'required|after:time',
             'location' => 'required|string',
         ]);
 
         $data['attendance_count'] = 0;
 
-        return OfficeHour::create($data);
+        $officeHour = OfficeHour::create($data);
+
+        $date = Carbon::parse($officeHour->date)->startOfDay();
+        if ($date->greaterThanOrEqualTo(Carbon::today()) && $date->lessThanOrEqualTo(Carbon::today()->addDays(7))) {
+            Announcement::create([
+                'title' => "New Office Hour: {$officeHour->ta_name}",
+                'body' => "A new office hour session has been scheduled.\n\nDetails:\nDate: {$officeHour->date}\nTime: {$officeHour->time} - {$officeHour->end_time}\nLocation: {$officeHour->location}",
+                'author_name' => 'System Auto-Notice',
+                'office_hour_id' => $officeHour->id,
+            ]);
+        }
+
+        return $officeHour;
     }
 
     public function update(Request $request, OfficeHour $officeHour)
@@ -34,18 +47,39 @@ class OfficeHourController extends Controller
             'ta_name' => 'required|string',
             'date' => 'required|date',
             'time' => 'required',
-            'end_time' => 'required',
+            'end_time' => 'required|after:time',
             'location' => 'required|string',
         ]);
 
         $officeHour->update($data);
+
+        if ($officeHour->wasChanged()) {
+            Announcement::create([
+                'title' => "Office Hour Updated: {$officeHour->ta_name}",
+                'body' => "An office hour session has been updated.\n\nNew Details:\nDate: {$officeHour->date}\nTime: {$officeHour->time} - {$officeHour->end_time}\nLocation: {$officeHour->location}",
+                'author_name' => 'System Auto-Notice',
+                'office_hour_id' => $officeHour->id,
+            ]);
+        }
 
         return $officeHour->refresh();
     }
 
     public function destroy(OfficeHour $officeHour)
     {
+        $taName = $officeHour->ta_name;
+        $date = $officeHour->date;
+        $time = $officeHour->time;
+        $endTime = $officeHour->end_time;
+        $location = $officeHour->location;
+
         $officeHour->delete();
+
+        Announcement::create([
+            'title' => "Office Hour Canceled: {$taName}",
+            'body' => "An office hour session has been canceled.\n\nCanceled Session Details:\nDate: {$date}\nTime: {$time} - {$endTime}\nLocation: {$location}",
+            'author_name' => 'System Auto-Notice',
+        ]);
 
         return response()->json(['message' => 'Office hour deleted.']);
     }
