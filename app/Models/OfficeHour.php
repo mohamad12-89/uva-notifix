@@ -10,6 +10,8 @@ class OfficeHour extends Model
         'ta_name',
         'date',
         'time',
+        'end_time',
+        'duration_minutes',
         'location',
         'attendance_count',
     ];

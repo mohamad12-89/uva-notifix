@@ -18,6 +18,7 @@ class OfficeHourController extends Controller
             'ta_name' => 'required|string',
             'date' => 'required|date',
             'time' => 'required',
+            'end_time' => 'required',
             'location' => 'required|string',
         ]);
 
@@ -32,6 +33,7 @@ class OfficeHourController extends Controller
             'ta_name' => 'required|string',
             'date' => 'required|date',
             'time' => 'required',
+            'end_time' => 'required',
             'location' => 'required|string',
         ]);
 
@@ -50,6 +52,16 @@ class OfficeHourController extends Controller
     public function join(OfficeHour $officeHour)
     {
         $officeHour->increment('attendance_count');
+
+        return $officeHour->refresh();
+    }
+
+    public function unjoin(OfficeHour $officeHour)
+    {
+        // Prevent negative counts if someone clicks "Unjoin" repeatedly
+        if ($officeHour->attendance_count > 0) {
+            $officeHour->decrement('attendance_count');
+        }
 
         return $officeHour->refresh();
     }

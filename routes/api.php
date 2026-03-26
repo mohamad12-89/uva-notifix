@@ -11,6 +11,7 @@ Route::post('/office-hours', [OfficeHourController::class, 'store']);
 Route::put('/office-hours/{officeHour}', [OfficeHourController::class, 'update']);
 Route::delete('/office-hours/{officeHour}', [OfficeHourController::class, 'destroy']);
 Route::post('/office-hours/{officeHour}/join', [OfficeHourController::class, 'join']);
+Route::delete('/office-hours/{officeHour}/join', [OfficeHourController::class, 'unjoin']);
 
 Route::get('/appointments', [AppointmentController::class, 'index']);
 Route::post('/appointments', [AppointmentController::class, 'store']);

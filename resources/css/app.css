@@ -77,18 +77,23 @@ select.input option {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 120%;
-    height: 180%;
+    width: 140%;
+    height: 220%;
     transform: translate(-50%, -50%);
     border-radius: 9999px;
-    background: radial-gradient(circle, rgb(248 151 126 / 0.24) 0%, rgb(248 151 126 / 0) 72%);
+    /* Match navbar hover brightness (similar to bg-uva-orange/15) */
+    background: radial-gradient(circle, rgb(248 76 30 / 0.16) 0%, rgb(248 76 30 / 0) 72%);
     opacity: 0;
-    transition: opacity 280ms ease;
+    filter: blur(2px);
+    transition:
+        opacity 320ms ease,
+        transform 420ms ease;
     pointer-events: none;
 }
 
 .brand-link:hover::before {
     opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
 }
 
 @keyframes shine {

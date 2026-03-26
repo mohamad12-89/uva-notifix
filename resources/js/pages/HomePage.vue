@@ -14,20 +14,20 @@
         class="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center"
       >
         <h3 class="text-2xl font-semibold text-uva-orange">
-          Weekly Office Hours
+          This Week’s Office Hours
         </h3>
         <button
           @click="isCalendarView = !isCalendarView"
           class="button-secondary"
         >
-          {{ isCalendarView ? "Show List View" : "View Calendar View" }}
+          {{ isCalendarView ? "Switch to List View" : "Switch to Calendar View" }}
         </button>
       </div>
 
       <div v-if="!isCalendarView">
-        <div v-if="officeHours.length" class="space-y-3">
+        <div v-if="weekOfficeHours.length" class="space-y-3">
           <div
-            v-for="slot in officeHours.slice(0, 7)"
+            v-for="slot in weekOfficeHours"
             :key="slot.id"
             class="flex flex-col justify-between gap-3 rounded-xl border border-white/20 bg-white/5 p-4 sm:flex-row sm:items-center"
           >
@@ -43,28 +43,25 @@
             </div>
             <button
               class="button-primary transition-all duration-200"
-              :disabled="joinedSessions.includes(slot.id)"
               :class="{
-                'opacity-50 cursor-not-allowed': joinedSessions.includes(
-                  slot.id,
-                ),
+                '!bg-slate-600 hover:!bg-slate-500': joinedSessions.includes(slot.id),
               }"
-              @click="join(slot.id)"
+              @click="toggleJoin(slot.id)"
             >
               {{
                 joinedSessions.includes(slot.id)
-                  ? "Joined"
+                  ? "Unjoin"
                   : "Join Office Hours"
               }}
             </button>
           </div>
         </div>
-        <p v-else class="text-slate-300">No office hours posted yet.</p>
+        <p v-else class="text-slate-300">No office hours posted for this week.</p>
       </div>
 
       <div v-else class="grid grid-cols-1 gap-2 md:grid-cols-7">
         <div
-          v-for="day in upcomingDays"
+          v-for="day in weekDays"
           :key="day.key"
           class="min-h-36 rounded-xl border border-white/20 bg-white/10 p-3 shadow-sm"
         >
@@ -86,13 +83,12 @@
                 class="mt-2 w-full rounded px-2 py-1 text-white transition-all duration-200"
                 :class="
                   joinedSessions.includes(slot.id)
-                    ? 'bg-uva-orange/50 cursor-not-allowed'
+                    ? 'bg-slate-600 hover:bg-slate-500'
                     : 'bg-uva-orange hover:bg-orange-600'
                 "
-                :disabled="joinedSessions.includes(slot.id)"
-                @click="join(slot.id)"
+                @click="toggleJoin(slot.id)"
               >
-                {{ joinedSessions.includes(slot.id) ? "Joined" : "Join" }}
+                {{ joinedSessions.includes(slot.id) ? "Unjoin" : "Join" }}
               </button>
             </div>
             <p v-if="!day.slots.length" class="text-xs text-slate-400">
@@ -140,70 +136,96 @@
 <script setup>
 import { onMounted, ref, computed } from "vue";
 import { api } from "../lib/api";
+import {
+  officeHours,
+  joinedSessions,
+  fetchOfficeHours,
+  pushJoinedSession,
+  removeJoinedSession,
+} from "../composables/useOfficeHours";
 
-const officeHours = ref([]);
 const aboutOpen = ref(false);
 const isCalendarView = ref(false);
-const joinedSessions = ref(
-  JSON.parse(localStorage.getItem("joinedSessions") || "[]"),
-);
 
-const loadOfficeHours = async () => {
-  const response = await api.get("/office-hours");
-  officeHours.value = response.data;
+const toLocalYmd = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 };
 
-const upcomingDays = computed(() => {
-  const days = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+const startOfWeekLocal = (d) => {
+  // Monday-start week
+  const copy = new Date(d);
+  copy.setHours(0, 0, 0, 0);
+  const day = copy.getDay(); // 0=Sun..6=Sat
+  const diffToMonday = (day + 6) % 7;
+  copy.setDate(copy.getDate() - diffToMonday);
+  return copy;
+};
 
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const dateString = `${year}-${month}-${day}`;
+const endOfWeekLocal = (d) => {
+  const start = startOfWeekLocal(d);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+};
+
+const weekRange = computed(() => {
+  const now = new Date();
+  const start = startOfWeekLocal(now);
+  const end = endOfWeekLocal(now);
+  return { start, end, startYmd: toLocalYmd(start), endYmd: toLocalYmd(end) };
+});
+
+const weekOfficeHours = computed(() => {
+  const { startYmd, endYmd } = weekRange.value;
+  return officeHours.value
+    .filter((slot) => slot.date >= startYmd && slot.date <= endYmd)
+    .slice()
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.time || "").localeCompare(b.time || "");
+    });
+});
+
+const weekDays = computed(() => {
+  const days = [];
+  const { start } = weekRange.value;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dateString = toLocalYmd(d);
     const label = d.toLocaleDateString(undefined, {
       weekday: "short",
       month: "short",
       day: "numeric",
     });
-
     days.push({
       key: dateString,
       label,
-      slots: officeHours.value.filter((slot) => slot.date === dateString),
+      slots: weekOfficeHours.value.filter((slot) => slot.date === dateString),
     });
   }
   return days;
 });
 
-const join = async (id) => {
-  if (joinedSessions.value.includes(id)) return;
+const toggleJoin = async (id) => {
+  const isJoined = joinedSessions.value.includes(id);
 
   try {
-    await api.post(`/office-hours/${id}/join`);
-    joinedSessions.value.push(id);
-    localStorage.setItem(
-      "joinedSessions",
-      JSON.stringify(joinedSessions.value),
-    );
-    await loadOfficeHours();
-  } catch (error) {
-    if (error.response && error.response.status === 409) {
-      console.error(error.response.data.message);
-      // Sync local state if the server says we've already joined
-      if (!joinedSessions.value.includes(id)) {
-        joinedSessions.value.push(id);
-        localStorage.setItem(
-          "joinedSessions",
-          JSON.stringify(joinedSessions.value),
-        );
-      }
+    if (isJoined) {
+      await api.delete(`/office-hours/${id}/join`);
+      removeJoinedSession(id);
     } else {
-      console.error("An error occurred while joining:", error);
+      await api.post(`/office-hours/${id}/join`);
+      pushJoinedSession(id);
     }
+    await fetchOfficeHours();
+  } catch (error) {
+    console.error("An error occurred while updating attendance:", error);
+    await fetchOfficeHours();
   }
 };
 
@@ -211,5 +233,5 @@ const formatDate = (value) =>
   new Date(`${value}T00:00:00`).toLocaleDateString();
 const formatTime = (value) => value.slice(0, 5);
 
-onMounted(loadOfficeHours);
+onMounted(fetchOfficeHours);
 </script>
