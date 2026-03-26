@@ -5,6 +5,9 @@
         Notifix
       </h2>
       <p class="mt-3 text-base text-slate-100/90 md:text-lg">
+        The Only way To Fix A Notification Nightmare
+      </p>
+      <p class="mt-3 text-base text-slate-100/90 md:text-lg">
         UVA Engineering Foundations Office Hours Platform
       </p>
     </div>
@@ -20,7 +23,9 @@
           @click="isCalendarView = !isCalendarView"
           class="button-secondary"
         >
-          {{ isCalendarView ? "Switch to List View" : "Switch to Calendar View" }}
+          {{
+            isCalendarView ? "Switch to List View" : "Switch to Calendar View"
+          }}
         </button>
       </div>
 
@@ -44,7 +49,9 @@
             <button
               class="button-primary transition-all duration-200"
               :class="{
-                '!bg-slate-600 hover:!bg-slate-500': joinedSessions.includes(slot.id),
+                '!bg-slate-600 hover:!bg-slate-500': joinedSessions.includes(
+                  slot.id,
+                ),
               }"
               @click="toggleJoin(slot.id)"
             >
@@ -56,7 +63,9 @@
             </button>
           </div>
         </div>
-        <p v-else class="text-slate-300">No office hours posted for this week.</p>
+        <p v-else class="text-slate-300">
+          No office hours posted for this week.
+        </p>
       </div>
 
       <div v-else class="grid grid-cols-1 gap-2 md:grid-cols-7">
