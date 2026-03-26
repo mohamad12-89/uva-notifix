@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OfficeHour;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class OfficeHourController extends Controller
 {
@@ -64,5 +65,52 @@ class OfficeHourController extends Controller
         }
 
         return $officeHour->refresh();
+    }
+
+    public function analytics()
+    {
+        $officeHours = OfficeHour::all();
+        $analytics = [];
+        $id = 1;
+
+        // Group by ISO week number using Collections (database-agnostic)
+        $grouped = $officeHours->groupBy(function ($item) {
+            return Carbon::parse($item->date)->format('W');
+        });
+
+        foreach ($grouped as $weekNum => $weekItems) {
+            $taGroups = $weekItems->groupBy('ta_name');
+            foreach ($taGroups as $taName => $taItems) {
+                $analytics[] = [
+                    'id' => $id++,
+                    'week' => 'Week ' . ltrim($weekNum, '0'),
+                    'week_num' => $weekNum, // Kept temporarily for accurate sorting
+                    'ta_name' => $taName,
+                    'attendance' => $taItems->sum('attendance_count'),
+                ];
+            }
+        }
+
+        // Sort analytics by week descending, then attendance descending
+        $analytics = collect($analytics)
+            ->sortByDesc('attendance')
+            ->sortByDesc('week_num')
+            ->values()
+            ->map(function ($item) {
+                unset($item['week_num']); // Remove the temporary sorting key
+                return $item;
+            })->all();
+
+        // Calculate real-time active sessions
+        $now = Carbon::now();
+        $activeSessions = OfficeHour::whereDate('date', $now->toDateString())
+            ->whereTime('time', '<=', $now->toTimeString())
+            ->whereTime('end_time', '>=', $now->toTimeString())
+            ->count();
+
+        return response()->json([
+            'analytics' => $analytics,
+            'activeSessions' => $activeSessions
+        ]);
     }
 }
