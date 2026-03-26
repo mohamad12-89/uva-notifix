@@ -9,6 +9,7 @@ import TaBiosPage from "./pages/TaBiosPage.vue";
 import AccountPage from "./pages/AccountPage.vue";
 import InstructorDashboard from "./pages/InstructorDashboard.vue";
 import SignupPage from "./pages/SignupPage.vue";
+import ProfilePage from "./pages/ProfilePage.vue";
 import { isUserVerified } from "./composables/useAuthProfile";
 
 // Apply a global CSS rule to make all buttons use the pointer cursor
@@ -29,6 +30,7 @@ const router = createRouter({
     { path: "/appointments", component: AppointmentsPage },
     { path: "/ta-bios", component: TaBiosPage },
     { path: "/account", component: AccountPage },
+    { path: "/profile", component: ProfilePage },
     { path: "/instructor-dashboard", component: InstructorDashboard },
   ],
 });

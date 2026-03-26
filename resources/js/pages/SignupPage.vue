@@ -145,6 +145,7 @@ function startVerification() {
     firstName: form.firstName,
     lastName: form.lastName,
     email: form.email,
+    password: form.password,
     // For now verification is mocked (any 6-digit code works), but we keep expiry.
     expiresAt: Date.now() + EXPIRES_MS,
   };
@@ -181,6 +182,7 @@ function verifyCode() {
     firstName: pending.firstName,
     lastName: pending.lastName,
     email: pending.email,
+    password: pending.password,
     verified: true,
     verifiedAt: new Date().toISOString(),
   });
