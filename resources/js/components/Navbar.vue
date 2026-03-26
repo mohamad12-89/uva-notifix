@@ -13,7 +13,7 @@
       </RouterLink>
       <div class="flex flex-wrap gap-2 text-sm">
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in visibleNavItems"
           :key="item.to"
           :to="item.to"
           :class="route.path === item.to ? activeLinkClass : inactiveLinkClass"
@@ -21,14 +21,26 @@
           {{ item.label }}
         </RouterLink>
       </div>
+      <RouterLink
+        v-if="initials"
+        to="/profile"
+        class="ml-3 flex h-10 w-10 items-center justify-center rounded-full border border-uva-orange/60 bg-uva-orange/15 text-sm font-bold text-uva-orange shadow-[0_0_18px_rgba(248,76,30,0.25)]"
+        :class="route.path === '/profile' ? 'ring-2 ring-uva-orange/70' : ''"
+        :title="authProfile?.email || 'Open profile settings'"
+      >
+        {{ initials }}
+      </RouterLink>
     </div>
   </nav>
 </template>
 
 <script setup>
+import { computed } from "vue";
 import { useRoute } from "vue-router";
+import { useAuthProfile } from "../composables/useAuthProfile";
 
 const route = useRoute();
+const { initials, authProfile } = useAuthProfile();
 
 const navItems = [
   { to: "/announcements", label: "Announcements" },
@@ -38,6 +50,11 @@ const navItems = [
   { to: "/instructor-dashboard", label: "Instructor Dashboard" },
   { to: "/account", label: "Account" },
 ];
+
+const visibleNavItems = computed(() => {
+  const isVerified = Boolean(authProfile.value?.verified);
+  return navItems.filter((item) => !(isVerified && item.to === "/account"));
+});
 
 const activeLinkClass =
   "rounded-lg border border-uva-orange/65 bg-uva-orange/15 px-3 py-1.5 text-uva-orange shadow-[0_0_18px_rgba(248,76,30,0.25)] transition-all duration-300 backdrop-blur-md";
