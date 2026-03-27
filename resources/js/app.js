@@ -8,13 +8,10 @@ import AppointmentsPage from "./pages/AppointmentsPage.vue";
 import TaBiosPage from "./pages/TaBiosPage.vue";
 import AccountPage from "./pages/AccountPage.vue";
 import InstructorDashboard from "./pages/InstructorDashboard.vue";
-<<<<<<< HEAD
 import AnnouncementsPage from "./pages/AnnouncementsPage.vue";
-=======
 import SignupPage from "./pages/SignupPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
 import { isUserVerified } from "./composables/useAuthProfile";
->>>>>>> f4358ad30f257d75d1252e7023d768cde09761d5
 
 // Apply a global CSS rule to make all buttons use the pointer cursor
 const style = document.createElement("style");
