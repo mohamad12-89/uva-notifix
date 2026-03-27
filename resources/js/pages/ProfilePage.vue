@@ -54,6 +54,9 @@
         <button class="button-primary mt-2 w-full" type="submit">
           Save Changes
         </button>
+        <button class="button-secondary w-full" type="button" @click="signOut">
+          Sign Out
+        </button>
       </form>
 
       <p v-if="error" class="mt-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
@@ -68,9 +71,11 @@
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { authProfile, setAuthProfile } = useAuthProfile();
+const router = useRouter();
+const { authProfile, setAuthProfile, clearAuthProfile } = useAuthProfile();
 
 const error = ref("");
 const message = ref("");
@@ -140,5 +145,10 @@ function saveProfile() {
   form.newPassword = "";
   form.confirmPassword = "";
   message.value = "Profile updated successfully.";
+}
+
+function signOut() {
+  clearAuthProfile();
+  router.replace("/signup");
 }
 </script>

@@ -4,13 +4,44 @@
       class="card border-white/25 bg-gradient-to-br from-uva-blue/45 via-slate-900/65 to-uva-orange/15 p-7 shadow-[0_12px_30px_rgba(7,12,24,0.35)]"
     >
       <h2 class="mb-1 text-center text-3xl font-bold text-uva-orange">
-        Sign Up
+        Welcome to Notifix
       </h2>
       <p class="mb-5 text-center text-sm text-slate-300">
-        Create your Notifix account with your UVA email.
+        Sign up or log in with your UVA email.
       </p>
 
-      <form v-if="step === 'signup'" class="space-y-3" @submit.prevent="startVerification">
+      <div class="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-white/5 p-1">
+        <button
+          type="button"
+          class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+          :class="
+            authMode === 'signup'
+              ? 'bg-uva-orange text-white'
+              : 'text-slate-200 hover:bg-white/10'
+          "
+          @click="switchToSignup"
+        >
+          Sign Up
+        </button>
+        <button
+          type="button"
+          class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+          :class="
+            authMode === 'login'
+              ? 'bg-uva-orange text-white'
+              : 'text-slate-200 hover:bg-white/10'
+          "
+          @click="switchToLogin"
+        >
+          Log In
+        </button>
+      </div>
+
+      <form
+        v-if="authMode === 'signup' && step === 'signup'"
+        class="space-y-3"
+        @submit.prevent="startVerification"
+      >
         <input
           v-model.trim="form.firstName"
           required
@@ -43,7 +74,11 @@
         </button>
       </form>
 
-      <form v-else class="space-y-3" @submit.prevent="verifyCode">
+      <form
+        v-else-if="authMode === 'signup'"
+        class="space-y-3"
+        @submit.prevent="verifyCode"
+      >
         <p class="rounded-lg bg-white/10 p-3 text-sm text-slate-200">
           Verification code sent to <span class="font-semibold">{{ form.email }}</span
           >. Enter any 6-digit code for now.
@@ -64,6 +99,27 @@
         </button>
         <button class="button-secondary w-full" type="button" @click="resetSignup">
           Start Over
+        </button>
+      </form>
+      
+      <form v-else class="space-y-3" @submit.prevent="login">
+        <input
+          v-model.trim="loginForm.email"
+          required
+          class="input w-full"
+          type="email"
+          placeholder="UVA email (e.g. abc2de@virginia.edu)"
+        />
+        <input
+          v-model="loginForm.password"
+          required
+          class="input w-full"
+          type="password"
+          placeholder="Password"
+          minlength="1"
+        />
+        <button class="button-secondary mt-2 w-full" type="submit">
+          Log In
         </button>
       </form>
 
@@ -88,6 +144,7 @@ const EXPIRES_MS = 2 * 60 * 1000;
 const router = useRouter();
 const { setAuthProfile } = useAuthProfile();
 
+const authMode = ref("signup");
 const step = ref("signup");
 const error = ref("");
 const message = ref("");
@@ -98,6 +155,10 @@ let tick = null;
 const form = reactive({
   firstName: "",
   lastName: "",
+  email: "",
+  password: "",
+});
+const loginForm = reactive({
   email: "",
   password: "",
 });
@@ -130,6 +191,31 @@ function clearPending() {
 
 function isValidUvaEmail(email) {
   return /@virginia\.edu$/i.test(email);
+}
+
+function parseNameFromEmail(email) {
+  const local = (email.split("@")[0] || "").trim();
+  if (!local) return { firstName: "UVA", lastName: "Student" };
+  const clean = local.replace(/[^a-zA-Z0-9]/g, "");
+  if (clean.length >= 2) {
+    return {
+      firstName: clean[0].toUpperCase() + clean.slice(1),
+      lastName: "Student",
+    };
+  }
+  return { firstName: clean.toUpperCase(), lastName: "Student" };
+}
+
+function switchToSignup() {
+  authMode.value = "signup";
+  error.value = "";
+  message.value = "";
+}
+
+function switchToLogin() {
+  authMode.value = "login";
+  error.value = "";
+  message.value = "";
 }
 
 function startVerification() {
@@ -197,6 +283,31 @@ function resetSignup() {
   step.value = "signup";
   error.value = "";
   message.value = "";
+}
+
+function login() {
+  error.value = "";
+  message.value = "";
+  if (!isValidUvaEmail(loginForm.email)) {
+    error.value = "Email must end with @virginia.edu.";
+    return;
+  }
+  if (!loginForm.password) {
+    error.value = "Password is required.";
+    return;
+  }
+
+  // Demo mode: accept fake UVA accounts and fake passwords.
+  const nameGuess = parseNameFromEmail(loginForm.email);
+  setAuthProfile({
+    firstName: nameGuess.firstName,
+    lastName: nameGuess.lastName,
+    email: loginForm.email,
+    password: loginForm.password,
+    verified: true,
+    verifiedAt: new Date().toISOString(),
+  });
+  router.replace("/");
 }
 
 onMounted(() => {
