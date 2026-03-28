@@ -11,7 +11,10 @@
       >
         Notifix
       </RouterLink>
-      <div class="flex flex-wrap gap-2 text-sm">
+      <div
+        v-if="visibleNavItems.length"
+        class="flex flex-wrap gap-2 text-sm"
+      >
         <RouterLink
           v-for="item in visibleNavItems"
           :key="item.to"
@@ -53,7 +56,8 @@ const navItems = [
 
 const visibleNavItems = computed(() => {
   const isVerified = Boolean(authProfile.value?.verified);
-  return navItems.filter((item) => !(isVerified && item.to === "/account"));
+  if (!isVerified) return [];
+  return navItems.filter((item) => item.to !== "/account");
 });
 
 const activeLinkClass =
