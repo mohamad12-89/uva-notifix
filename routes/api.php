@@ -30,3 +30,4 @@ Route::delete('/ta-bios/{taBio}', [TaBioController::class, 'destroy']);
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/verify', [AuthController::class, 'verify']);
