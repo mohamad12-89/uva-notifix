@@ -166,32 +166,55 @@
     </form>
 
     <div class="space-y-3">
-      <div v-for="week in calendarWeeks" :key="week.weekNumber">
-        <p
-          class="mb-2 text-sm font-semibold uppercase tracking-wider text-uva-orange"
+      <div class="flex items-center justify-between rounded-xl border border-white/20 bg-white/5 p-3">
+        <button
+          type="button"
+          class="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
+          @click="goToPreviousMonth"
         >
-          Week {{ week.weekNumber }}
+          ← Previous
+        </button>
+        <p class="text-lg font-semibold text-uva-orange">
+          {{ currentMonthLabel }}
         </p>
-
-        <!-- Fixed 7-column layout keeps every day box identical size -->
-        <div class="grid grid-cols-1 gap-2 md:grid-cols-7">
+        <button
+          type="button"
+          class="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
+          @click="goToNextMonth"
+        >
+          Next →
+        </button>
+      </div>
+      <div class="grid grid-cols-7 gap-2">
+        <p
+          v-for="weekday in weekdayLabels"
+          :key="weekday"
+          class="rounded-lg border border-white/20 bg-white/10 py-2 text-center text-xs font-semibold uppercase tracking-wider text-uva-orange"
+        >
+          {{ weekday }}
+        </p>
+      </div>
+      <div class="space-y-2">
+        <div
+          v-for="week in calendarWeeks"
+          :key="week.weekNumber"
+          class="grid grid-cols-1 gap-2 md:grid-cols-7"
+        >
           <div
             v-for="day in week.days"
             :key="day.key"
-            :id="day.inMonth ? `day-${day.key}` : undefined"
+            :id="`day-${day.key}`"
             class="min-h-36 rounded-xl border border-white/20 bg-white/10 p-3 shadow-sm transition"
-            :class="
-              day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'
-            "
+            :class="day.inMonth ? 'opacity-100' : 'opacity-55'"
           >
             <p
-              v-if="day.inMonth"
-              class="mb-2 text-sm font-semibold text-slate-100"
+              class="mb-2 text-sm font-semibold"
+              :class="day.inMonth ? 'text-slate-100' : 'text-slate-400'"
             >
               {{ day.label }}
             </p>
 
-            <div v-if="day.inMonth" class="space-y-2">
+            <div class="space-y-2">
               <div
                 v-for="slot in day.slots"
                 :key="slot.id"
@@ -471,86 +494,57 @@ const toLocalYmd = (d) => {
   return `${y}-${m}-${day}`;
 };
 
+const nowForMonth = new Date();
+const currentMonthStart = ref(
+  new Date(nowForMonth.getFullYear(), nowForMonth.getMonth(), 1),
+);
+
+const currentMonthLabel = computed(() =>
+  currentMonthStart.value.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  }),
+);
+
+const goToPreviousMonth = () => {
+  const d = currentMonthStart.value;
+  currentMonthStart.value = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+};
+
+const goToNextMonth = () => {
+  const d = currentMonthStart.value;
+  currentMonthStart.value = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+};
+
+const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 const calendarWeeks = computed(() => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const lastDayDate = new Date(year, month + 1, 0);
+  const year = currentMonthStart.value.getFullYear();
+  const month = currentMonthStart.value.getMonth();
+  const lastDayDate = new Date(year, month + 1, 0).getDate();
 
-  // week starts on Sunday (0) to match JS getDay()
-  const firstDayWeekday = new Date(year, month, 1).getDay();
-  const firstWeekStart = new Date(year, month, 1 - firstDayWeekday);
+  // Monday-start calendar: convert JS day (Sun=0) to Mon=0..Sun=6.
+  const firstDayWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const totalCells = Math.ceil((firstDayWeekday + lastDayDate) / 7) * 7;
 
-  const weeks = [];
-  let weekStart = new Date(firstWeekStart);
-  let weekNumber = 1;
+  const cells = Array.from({ length: totalCells }).map((_, idx) => {
+    const dayOffset = idx - firstDayWeekday;
+    const d = new Date(year, month, 1 + dayOffset);
+    const dateStr = toLocalYmd(d);
+    const inMonth = d.getMonth() === month;
 
-  while (weekStart <= lastDayDate) {
-    // Always build a full 7-cell week so widths never change.
-    const weekSlots = Array.from({ length: 7 }).map((_, idx) => {
-      const d = new Date(
-        weekStart.getFullYear(),
-        weekStart.getMonth(),
-        weekStart.getDate() + idx,
-      );
+    return {
+      key: dateStr,
+      inMonth,
+      label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      slots: officeHours.value.filter((slot) => slot.date === dateStr),
+    };
+  });
 
-      const inMonth = d.getMonth() === month;
-      if (!inMonth) {
-        return {
-          key: `empty-${weekNumber}-${idx}`,
-          inMonth: false,
-          label: "",
-          slots: [],
-        };
-      }
-
-      const dateStr = toLocalYmd(d);
-      const label = d.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      });
-
-      return {
-        key: dateStr,
-        inMonth: true,
-        label,
-        slots: officeHours.value.filter((slot) => slot.date === dateStr),
-      };
-    });
-
-    const visibleCount = weekSlots.filter((d) => d.inMonth).length;
-
-    // If only 3 or fewer days exist in this week (end of month),
-    // center them within the 7-day row.
-    if (visibleCount > 0 && visibleCount <= 3) {
-      const visibleDays = weekSlots.filter((d) => d.inMonth);
-      const startCol = Math.floor((7 - visibleCount) / 2);
-
-      const centered = Array.from({ length: 7 }).map((_, idx) => ({
-        key: `empty-${weekNumber}-${idx}`,
-        inMonth: false,
-        label: "",
-        slots: [],
-      }));
-
-      for (let i = 0; i < visibleDays.length; i++) {
-        centered[startCol + i] = visibleDays[i];
-      }
-
-      weeks.push({ weekNumber, days: centered });
-    } else {
-      weeks.push({ weekNumber, days: weekSlots });
-    }
-
-    weekNumber += 1;
-    weekStart = new Date(
-      weekStart.getFullYear(),
-      weekStart.getMonth(),
-      weekStart.getDate() + 7,
-    );
-  }
-
-  return weeks;
+  return Array.from({ length: cells.length / 7 }).map((_, i) => ({
+    weekNumber: i + 1,
+    days: cells.slice(i * 7, i * 7 + 7),
+  }));
 });
 
 onMounted(fetchOfficeHours);
