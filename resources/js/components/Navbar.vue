@@ -43,7 +43,7 @@ import { useRoute } from "vue-router";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
 const route = useRoute();
-const { initials, authProfile } = useAuthProfile();
+const { initials, authProfile, isTaProfessor } = useAuthProfile();
 
 const navItems = [
   { to: "/announcements", label: "Announcements" },
@@ -57,7 +57,11 @@ const navItems = [
 const visibleNavItems = computed(() => {
   const isVerified = Boolean(authProfile.value?.verified);
   if (!isVerified) return [];
-  return navItems.filter((item) => item.to !== "/account");
+  return navItems.filter((item) => {
+    if (item.to === "/account") return false;
+    if (item.to === "/instructor-dashboard" && !isTaProfessor.value) return false;
+    return true;
+  });
 });
 
 const activeLinkClass =

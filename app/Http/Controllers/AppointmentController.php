@@ -23,11 +23,23 @@ class AppointmentController extends Controller
             'comments' => 'nullable|string',
         ]);
 
+        $data['status'] = 'pending';
+
         return Appointment::create($data);
     }
 
     public function update(Request $request, Appointment $appointment)
     {
+        // TA quick status update (accept / decline) without resubmitting full form
+        if ($request->has('status') && ! $request->filled('student_name')) {
+            $data = $request->validate([
+                'status' => 'required|in:pending,accepted,declined',
+            ]);
+            $appointment->update($data);
+
+            return $appointment->refresh();
+        }
+
         $data = $request->validate([
             'student_name' => 'required|string',
             'reason' => 'required|string',

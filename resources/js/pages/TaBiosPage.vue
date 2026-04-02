@@ -2,12 +2,12 @@
     <section class="space-y-6">
         <div class="flex items-center justify-between">
             <h2 class="text-3xl font-bold text-uva-orange">TA Bios</h2>
-            <button class="button-secondary" @click="showForm = !showForm">
+            <button v-if="isTaProfessor" class="button-secondary" @click="showForm = !showForm">
                 Add TA Bio
             </button>
         </div>
 
-        <form v-if="showForm" class="card grid gap-3 p-6 md:grid-cols-2" @submit.prevent="submit">
+        <form v-if="showForm && isTaProfessor" class="card grid gap-3 p-6 md:grid-cols-2" @submit.prevent="submit">
             <input v-model="form.name" required class="input" placeholder="Name" />
             <input v-model="form.year" required class="input" placeholder="Year" />
             <input v-model="form.major" required class="input" placeholder="Major" />
@@ -42,6 +42,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { api } from '../lib/api';
+import { useAuthProfile } from '../composables/useAuthProfile';
+
+const { isTaProfessor } = useAuthProfile();
 
 const showForm = ref(false);
 const editingId = ref(null);

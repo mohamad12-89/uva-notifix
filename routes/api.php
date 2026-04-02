@@ -17,6 +17,7 @@ Route::get('/analytics/office-hours', [OfficeHourController::class, 'analytics']
 
 Route::get('/announcements', [AnnouncementController::class, 'index']);
 Route::post('/announcements', [AnnouncementController::class, 'store']);
+Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
 
 Route::get('/appointments', [AppointmentController::class, 'index']);
 Route::post('/appointments', [AppointmentController::class, 'store']);

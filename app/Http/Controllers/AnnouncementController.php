@@ -25,4 +25,11 @@ class AnnouncementController extends Controller
         $announcement = Announcement::create($data);
         return response()->json($announcement, 201);
     }
+
+    public function destroy(Announcement $announcement)
+    {
+        $announcement->delete();
+
+        return response()->json(['message' => 'Announcement deleted.']);
+    }
 }

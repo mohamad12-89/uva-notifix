@@ -22,9 +22,19 @@
           <h3 class="text-xl font-semibold text-white">
             {{ announcement.title }}
           </h3>
-          <span class="text-sm text-slate-400">{{
-            formatDate(announcement.created_at)
-          }}</span>
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-400">{{
+              formatDate(announcement.created_at)
+            }}</span>
+            <button
+              v-if="isTaProfessor"
+              type="button"
+              class="rounded-md border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-medium text-red-300 transition hover:bg-red-500/30"
+              @click="confirmDelete(announcement)"
+            >
+              Delete
+            </button>
+          </div>
         </div>
 
         <!-- Author & Body -->
@@ -71,6 +81,7 @@
                 {{ announcement.office_hour.attendance_count }} attending
               </span>
               <button
+                v-if="isStudent"
                 @click="toggleJoin(announcement.office_hour)"
                 :class="[
                   'rounded-md px-4 py-2 text-sm font-medium transition-colors',
@@ -97,6 +108,9 @@ import {
   pushJoinedSession,
   removeJoinedSession,
 } from "../composables/useOfficeHours";
+import { useAuthProfile } from "../composables/useAuthProfile";
+
+const { isTaProfessor, isStudent } = useAuthProfile();
 
 const announcements = ref([]);
 const loading = ref(true);
@@ -126,6 +140,16 @@ const formatDate = (dateStr) => {
 };
 
 const isJoined = (id) => joinedSessions.value.includes(id);
+
+const confirmDelete = async (announcement) => {
+  if (!confirm("Delete this announcement?")) return;
+  try {
+    await api.delete(`/announcements/${announcement.id}`);
+    await fetchAnnouncements();
+  } catch (error) {
+    console.error("Failed to delete announcement:", error);
+  }
+};
 
 const toggleJoin = async (officeHour) => {
   try {

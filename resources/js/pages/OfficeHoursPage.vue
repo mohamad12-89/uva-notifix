@@ -55,7 +55,11 @@
         </div>
       </div>
 
-      <button class="button-secondary" @click="showForm = !showForm">
+      <button
+        v-if="isTaProfessor"
+        class="button-secondary"
+        @click="showForm = !showForm"
+      >
         Add Office Hours
       </button>
     </div>
@@ -68,7 +72,7 @@
     </div>
 
     <form
-      v-if="showForm"
+      v-if="showForm && isTaProfessor"
       class="card space-y-4 p-5"
       @submit.prevent="submitForm"
     >
@@ -227,6 +231,7 @@
                 </p>
                 <div class="mt-2 flex flex-wrap gap-1">
                   <button
+                    v-if="isStudent"
                     class="flex-auto rounded px-1 py-1 text-center text-white transition-all duration-200"
                     :class="
                       joinedSessions.includes(slot.id)
@@ -238,12 +243,14 @@
                     {{ joinedSessions.includes(slot.id) ? "Unjoin" : "Join" }}
                   </button>
                   <button
+                    v-if="isTaProfessor"
                     class="flex-auto rounded bg-slate-600 px-1 py-1 text-center text-white"
                     @click="startEdit(slot)"
                   >
                     Edit
                   </button>
                   <button
+                    v-if="isTaProfessor"
                     class="flex-auto rounded bg-red-600 px-2 py-1 text-center text-white"
                     @click="remove(slot.id)"
                   >
@@ -274,6 +281,9 @@ import {
   pushJoinedSession,
   removeJoinedSession,
 } from "../composables/useOfficeHours";
+import { useAuthProfile } from "../composables/useAuthProfile";
+
+const { isTaProfessor, isStudent } = useAuthProfile();
 
 const showForm = ref(false);
 const editingId = ref(null);

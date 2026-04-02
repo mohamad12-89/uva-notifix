@@ -11,7 +11,11 @@ import InstructorDashboard from "./pages/InstructorDashboard.vue";
 import AnnouncementsPage from "./pages/AnnouncementsPage.vue";
 import SignupPage from "./pages/SignupPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
-import { isUserVerified } from "./composables/useAuthProfile";
+import {
+  getStoredAuthProfile,
+  isTaProfessorEmail,
+  isUserVerified,
+} from "./composables/useAuthProfile";
 
 // Apply a global CSS rule to make all buttons use the pointer cursor
 const style = document.createElement("style");
@@ -41,6 +45,10 @@ router.beforeEach((to) => {
   const isVerified = isUserVerified();
   if (!isVerified && to.path !== "/signup") return "/signup";
   if (isVerified && to.path === "/signup") return "/";
+  if (to.path === "/instructor-dashboard") {
+    const p = getStoredAuthProfile();
+    if (!isTaProfessorEmail(p?.email)) return "/";
+  }
   return true;
 });
 

@@ -47,6 +47,7 @@
               </p>
             </div>
             <button
+              v-if="isStudent"
               class="button-primary transition-all duration-200"
               :class="{
                 '!bg-slate-600 hover:!bg-slate-500': joinedSessions.includes(
@@ -152,6 +153,9 @@ import {
   pushJoinedSession,
   removeJoinedSession,
 } from "../composables/useOfficeHours";
+import { useAuthProfile } from "../composables/useAuthProfile";
+
+const { isStudent } = useAuthProfile();
 
 const aboutOpen = ref(false);
 const isCalendarView = ref(false);

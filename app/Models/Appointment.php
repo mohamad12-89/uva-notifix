@@ -13,5 +13,6 @@ class Appointment extends Model
         'class',
         'ta_selected',
         'comments',
+        'status',
     ];
 }
