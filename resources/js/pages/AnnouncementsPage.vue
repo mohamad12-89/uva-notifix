@@ -110,7 +110,7 @@ import {
 } from "../composables/useOfficeHours";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { isTaProfessor, isStudent } = useAuthProfile();
+const { isTaProfessor, isStudent, authProfile } = useAuthProfile();
 
 const announcements = ref([]);
 const loading = ref(true);
@@ -152,13 +152,21 @@ const confirmDelete = async (announcement) => {
 };
 
 const toggleJoin = async (officeHour) => {
+  const profile = authProfile.value;
   try {
     if (isJoined(officeHour.id)) {
-      await api.delete(`/office-hours/${officeHour.id}/join`);
+      await api.delete(`/office-hours/${officeHour.id}/join`, {
+        data: { student_email: profile?.email },
+      });
       removeJoinedSession(officeHour.id);
       if (officeHour.attendance_count > 0) officeHour.attendance_count--;
     } else {
-      await api.post(`/office-hours/${officeHour.id}/join`);
+      await api.post(`/office-hours/${officeHour.id}/join`, {
+        student_name:
+          `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() ||
+          profile?.email,
+        student_email: profile?.email,
+      });
       pushJoinedSession(officeHour.id);
       officeHour.attendance_count++;
     }

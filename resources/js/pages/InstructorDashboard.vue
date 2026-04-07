@@ -142,6 +142,47 @@
           </table>
         </div>
       </div>
+
+      <div class="mt-8 space-y-4">
+        <h4 class="font-medium text-slate-200">
+          Student Signups vs Checked-In Attendance
+        </h4>
+        <div
+          class="overflow-hidden rounded-lg border border-white/10 bg-slate-900/50"
+        >
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead
+              class="border-b border-white/10 bg-slate-800/50 text-xs uppercase text-slate-400"
+            >
+              <tr>
+                <th scope="col" class="px-4 py-3">Student</th>
+                <th scope="col" class="px-4 py-3">Email</th>
+                <th scope="col" class="px-4 py-3 text-right">Signed Up</th>
+                <th scope="col" class="px-4 py-3 text-right">Checked In</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="student in studentStats"
+                :key="student.student_email"
+                class="border-b border-white/5 hover:bg-white/5"
+              >
+                <td class="px-4 py-3 font-medium text-white">
+                  {{ student.student_name }}
+                </td>
+                <td class="px-4 py-3">{{ student.student_email }}</td>
+                <td class="px-4 py-3 text-right">{{ student.signed_up_count }}</td>
+                <td class="px-4 py-3 text-right">{{ student.attended_count }}</td>
+              </tr>
+              <tr v-if="!studentStats.length">
+                <td colspan="4" class="px-4 py-8 text-center text-slate-500">
+                  No student signup data yet.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -156,6 +197,7 @@ const postSuccess = ref(false);
 
 const analyticsData = ref([]);
 const activeSessions = ref(0);
+const studentStats = ref([]);
 
 const fetchAnalytics = async () => {
   try {
@@ -164,6 +206,7 @@ const fetchAnalytics = async () => {
     if (response.data.activeSessions !== undefined) {
       activeSessions.value = response.data.activeSessions;
     }
+    studentStats.value = response.data.studentStats || [];
   } catch (error) {
     console.error("Failed to fetch analytics", error);
   }

@@ -155,7 +155,7 @@ import {
 } from "../composables/useOfficeHours";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { isStudent } = useAuthProfile();
+const { isStudent, authProfile } = useAuthProfile();
 
 const aboutOpen = ref(false);
 const isCalendarView = ref(false);
@@ -226,13 +226,21 @@ const weekDays = computed(() => {
 
 const toggleJoin = async (id) => {
   const isJoined = joinedSessions.value.includes(id);
+  const profile = authProfile.value;
 
   try {
     if (isJoined) {
-      await api.delete(`/office-hours/${id}/join`);
+      await api.delete(`/office-hours/${id}/join`, {
+        data: { student_email: profile?.email },
+      });
       removeJoinedSession(id);
     } else {
-      await api.post(`/office-hours/${id}/join`);
+      await api.post(`/office-hours/${id}/join`, {
+        student_name:
+          `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() ||
+          profile?.email,
+        student_email: profile?.email,
+      });
       pushJoinedSession(id);
     }
     await fetchOfficeHours();

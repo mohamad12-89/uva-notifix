@@ -13,6 +13,8 @@ Route::put('/office-hours/{officeHour}', [OfficeHourController::class, 'update']
 Route::delete('/office-hours/{officeHour}', [OfficeHourController::class, 'destroy']);
 Route::post('/office-hours/{officeHour}/join', [OfficeHourController::class, 'join']);
 Route::delete('/office-hours/{officeHour}/join', [OfficeHourController::class, 'unjoin']);
+Route::get('/office-hours/{officeHour}/signups', [OfficeHourController::class, 'signups']);
+Route::post('/office-hours/{officeHour}/signups/{signup}/check-in', [OfficeHourController::class, 'checkIn']);
 Route::get('/analytics/office-hours', [OfficeHourController::class, 'analytics']);
 
 Route::get('/announcements', [AnnouncementController::class, 'index']);

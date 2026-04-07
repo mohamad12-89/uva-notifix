@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OfficeHour extends Model
 {
@@ -15,4 +16,9 @@ class OfficeHour extends Model
         'location',
         'attendance_count',
     ];
+
+    public function signups(): HasMany
+    {
+        return $this->hasMany(OfficeHourSignup::class);
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Announcement;
 use App\Models\OfficeHour;
+use App\Models\OfficeHourSignup;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -11,7 +12,16 @@ class OfficeHourController extends Controller
 {
     public function index()
     {
-        return OfficeHour::query()->orderBy('date')->orderBy('time')->get();
+        return OfficeHour::query()
+            ->withCount('signups')
+            ->orderBy('date')
+            ->orderBy('time')
+            ->get()
+            ->map(function ($officeHour) {
+                // Keep legacy field name for current frontend cards.
+                $officeHour->attendance_count = $officeHour->signups_count;
+                return $officeHour;
+            });
     }
 
     public function store(Request $request)
@@ -86,19 +96,73 @@ class OfficeHourController extends Controller
 
     public function join(OfficeHour $officeHour)
     {
-        $officeHour->increment('attendance_count');
+        $data = request()->validate([
+            'student_name' => 'required|string|max:255',
+            'student_email' => 'required|email',
+        ]);
+
+        if (!str_ends_with(strtolower($data['student_email']), '@virginia.edu')) {
+            return response()->json(['message' => 'Student email must end with @virginia.edu'], 422);
+        }
+
+        OfficeHourSignup::firstOrCreate(
+            [
+                'office_hour_id' => $officeHour->id,
+                'student_email' => strtolower($data['student_email']),
+            ],
+            [
+                'student_name' => $data['student_name'],
+            ],
+        );
+
+        $officeHour->attendance_count = $officeHour->signups()->count();
+        $officeHour->save();
 
         return $officeHour->refresh();
     }
 
     public function unjoin(OfficeHour $officeHour)
     {
-        // Prevent negative counts if someone clicks "Unjoin" repeatedly
-        if ($officeHour->attendance_count > 0) {
-            $officeHour->decrement('attendance_count');
-        }
+        $data = request()->validate([
+            'student_email' => 'required|email',
+        ]);
+
+        $officeHour->signups()
+            ->where('student_email', strtolower($data['student_email']))
+            ->delete();
+
+        $officeHour->attendance_count = $officeHour->signups()->count();
+        $officeHour->save();
 
         return $officeHour->refresh();
+    }
+
+    public function signups(OfficeHour $officeHour)
+    {
+        $signups = $officeHour->signups()
+            ->orderByDesc('created_at')
+            ->get(['id', 'student_name', 'student_email', 'checked_in_at', 'created_at']);
+
+        return response()->json([
+            'office_hour_id' => $officeHour->id,
+            'signups' => $signups,
+            'signup_count' => $signups->count(),
+            'checked_in_count' => $signups->whereNotNull('checked_in_at')->count(),
+        ]);
+    }
+
+    public function checkIn(OfficeHour $officeHour, OfficeHourSignup $signup)
+    {
+        if ($signup->office_hour_id !== $officeHour->id) {
+            return response()->json(['message' => 'Signup does not belong to this office hour.'], 422);
+        }
+
+        if (!$signup->checked_in_at) {
+            $signup->checked_in_at = now();
+            $signup->save();
+        }
+
+        return response()->json($signup->refresh());
     }
 
     public function analytics()
@@ -142,9 +206,18 @@ class OfficeHourController extends Controller
             ->whereTime('end_time', '>=', $now->toTimeString())
             ->count();
 
+        $studentStats = OfficeHourSignup::query()
+            ->selectRaw('student_email, MAX(student_name) as student_name')
+            ->selectRaw('COUNT(*) as signed_up_count')
+            ->selectRaw('SUM(CASE WHEN checked_in_at IS NOT NULL THEN 1 ELSE 0 END) as attended_count')
+            ->groupBy('student_email')
+            ->orderByDesc('signed_up_count')
+            ->get();
+
         return response()->json([
             'analytics' => $analytics,
-            'activeSessions' => $activeSessions
+            'activeSessions' => $activeSessions,
+            'studentStats' => $studentStats,
         ]);
     }
 }
