@@ -207,18 +207,19 @@
           <div
             v-for="day in week.days"
             :key="day.key"
-            :id="`day-${day.key}`"
+            :id="day.inMonth ? `day-${day.key}` : undefined"
             class="min-h-36 rounded-xl border border-white/20 bg-white/10 p-3 shadow-sm transition"
-            :class="day.inMonth ? 'opacity-100' : 'opacity-55'"
+            :class="day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'"
           >
             <p
+              v-if="day.inMonth"
               class="mb-2 text-sm font-semibold"
-              :class="day.inMonth ? 'text-slate-100' : 'text-slate-400'"
+              :class="'text-slate-100'"
             >
               {{ day.label }}
             </p>
 
-            <div class="space-y-2">
+            <div v-if="day.inMonth" class="space-y-2">
               <div
                 v-for="slot in day.slots"
                 :key="slot.id"
@@ -546,8 +547,12 @@ const calendarWeeks = computed(() => {
     return {
       key: dateStr,
       inMonth,
-      label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      slots: officeHours.value.filter((slot) => slot.date === dateStr),
+      label: inMonth
+        ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : "",
+      slots: inMonth
+        ? officeHours.value.filter((slot) => slot.date === dateStr)
+        : [],
     };
   });
 

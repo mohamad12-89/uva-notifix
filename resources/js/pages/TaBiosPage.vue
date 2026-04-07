@@ -30,7 +30,7 @@
                         <p class="mt-1 text-slate-300">{{ bio.notes }}</p>
                     </div>
                 </div>
-                <div class="mt-3 flex gap-2">
+                <div v-if="isTaProfessor" class="mt-3 flex gap-2">
                     <button class="rounded bg-slate-700 px-3 py-1 text-sm text-white" @click="startEdit(bio)">Edit</button>
                     <button class="rounded bg-red-600 px-3 py-1 text-sm text-white" @click="remove(bio.id)">Delete</button>
                 </div>
@@ -66,6 +66,7 @@ const resetForm = () => {
 };
 
 const submit = async () => {
+    if (!isTaProfessor.value) return;
     const payload = { ...form };
     if (editingId.value) {
         await api.put(`/ta-bios/${editingId.value}`, payload);
@@ -78,6 +79,7 @@ const submit = async () => {
 };
 
 const startEdit = (bio) => {
+    if (!isTaProfessor.value) return;
     showForm.value = true;
     editingId.value = bio.id;
     form.name = bio.name;
@@ -88,6 +90,7 @@ const startEdit = (bio) => {
 };
 
 const remove = async (id) => {
+    if (!isTaProfessor.value) return;
     await api.delete(`/ta-bios/${id}`);
     await load();
 };
