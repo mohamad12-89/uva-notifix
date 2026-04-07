@@ -179,14 +179,14 @@ const timeLeftLabel = computed(() => {
 
 function readPending() {
   try {
-    return JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+    return JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null");
   } catch {
     return null;
   }
 }
 
 function clearPending() {
-  localStorage.removeItem(PENDING_KEY);
+  sessionStorage.removeItem(PENDING_KEY);
 }
 
 function isValidUvaEmail(email) {
@@ -236,7 +236,7 @@ function startVerification() {
     expiresAt: Date.now() + EXPIRES_MS,
   };
 
-  localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+  sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
   step.value = "verify";
   message.value = "Verification email sent (mocked for now).";
 }
