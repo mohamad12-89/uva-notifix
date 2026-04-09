@@ -140,11 +140,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { supabase } from "../lib/supabase";
 import {
   getStoredAuthProfile,
   initializeAuth,
   refreshAuthProfile,
+  signInLocalProfile,
 } from "../composables/useAuthProfile";
 
 const router = useRouter();
@@ -196,40 +196,18 @@ async function startVerification() {
     return;
   }
 
-  if (form.password.length < 6) {
-    error.value = "Password must be at least 6 characters.";
+  if (!form.password) {
+    error.value = "Password is required.";
     return;
   }
 
   const normalizedEmail = form.email.trim().toLowerCase();
-  const redirectTo = `${window.location.origin}/signup`;
-  const { error: signUpError } = await supabase.auth.signUp({
-    email: normalizedEmail,
-    password: form.password,
-    options: {
-      emailRedirectTo: redirectTo,
-      data: {
-        first_name: form.firstName.trim(),
-        last_name: form.lastName.trim(),
-      },
-    },
-  });
-
-  if (signUpError) {
-    error.value = signUpError.message || "Unable to start sign up.";
-    return;
-  }
-
-  // Force a confirmation email send for cases where signUp succeeds but no email arrives
-  // (for example existing unverified accounts).
-  await sendConfirmationEmail(normalizedEmail);
-
   verificationEmail.value = normalizedEmail;
   showVerificationModal.value = true;
   verificationError.value = "";
-  verificationNote.value = "Verification email sent.";
+  verificationNote.value =
+    "Verification email sent (demo mode). Click the button below to continue.";
   startVerificationCountdown();
-  startVerificationPolling();
 }
 
 function clearVerificationTimers() {
@@ -260,51 +238,35 @@ function startVerificationCountdown() {
     );
     if (verificationSecondsRemaining.value === 0) {
       verificationError.value =
-        "Verification timed out. Resend the email or change your address.";
+        "Verification timed out. Resend or change email to continue.";
       clearVerificationTimers();
     }
   }, 1000);
 }
 
-function startVerificationPolling() {
-  verificationPollInterval = setInterval(async () => {
-    if (!showVerificationModal.value || verificationSecondsRemaining.value <= 0) {
-      return;
-    }
-    await checkVerificationStatus(false);
-  }, 4000);
-}
-
 async function checkVerificationStatus(showPendingMessage = true) {
-  verificationError.value = "";
-  await refreshAuthProfile();
-  const profile = await getStoredAuthProfile();
-  if (profile?.verified) {
-    closeVerificationModal();
-    authMode.value = "login";
-    message.value = "Email verified successfully. You can now use Notifix.";
-    router.replace("/");
+  if (verificationSecondsRemaining.value <= 0) {
+    verificationError.value = "Session expired. Please resend verification.";
     return;
   }
-  if (showPendingMessage) {
-    verificationNote.value =
-      "Still waiting for verification. Click the link in your email, then try again.";
-  }
+  verificationError.value = "";
+  await signInLocalProfile({
+    email: verificationEmail.value,
+    firstName: form.firstName,
+    lastName: form.lastName,
+  });
+  await refreshAuthProfile();
+  closeVerificationModal();
+  authMode.value = "login";
+  message.value = "Email verified successfully.";
+  router.replace("/");
 }
 
 async function resendVerificationEmail() {
   verificationError.value = "";
   verificationNote.value = "";
-  const resendError = await sendConfirmationEmail(verificationEmail.value);
-  if (resendError) {
-    verificationError.value =
-      resendError ||
-      "Unable to resend verification email. Check Supabase email provider settings.";
-    return;
-  }
-  verificationNote.value = "Verification email resent.";
+  verificationNote.value = "Verification email resent (demo mode).";
   startVerificationCountdown();
-  startVerificationPolling();
 }
 
 function changeSignupEmail() {
@@ -325,38 +287,13 @@ async function login() {
     return;
   }
 
-  const { error: loginError } = await supabase.auth.signInWithPassword({
-    email: loginForm.email.trim().toLowerCase(),
-    password: loginForm.password,
+  const email = loginForm.email.trim().toLowerCase();
+  await signInLocalProfile({
+    email,
+    firstName: "",
+    lastName: "",
   });
-
-  if (loginError) {
-    const normalizedEmail = loginForm.email.trim().toLowerCase();
-    const isUnverifiedLogin =
-      /confirm your email|email not confirmed|not confirmed/i.test(
-        loginError.message || "",
-      );
-    if (isUnverifiedLogin) {
-      const resendError = await sendConfirmationEmail(normalizedEmail);
-      if (resendError) {
-        error.value = `Email is not verified yet. We could not resend verification email: ${resendError}`;
-      } else {
-        error.value =
-          "Email is not verified yet. We sent a fresh verification link to your inbox.";
-      }
-      return;
-    }
-    error.value = loginError.message || "Invalid email or password.";
-    return;
-  }
-
   await refreshAuthProfile();
-  const profile = await getStoredAuthProfile();
-  if (!profile?.verified) {
-    error.value = "Please verify your email before logging in.";
-    await supabase.auth.signOut();
-    return;
-  }
   router.replace("/");
 }
 
@@ -371,28 +308,4 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   clearVerificationTimers();
 });
-
-async function sendConfirmationEmail(email) {
-  const redirectTo = `${window.location.origin}/signup`;
-  const { error: resendError } = await supabase.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
-
-  if (!resendError) {
-    return "";
-  }
-
-  // Fallback for some Supabase setups where resend/signup is restricted:
-  // send a magic-link style email users can still click to return and verify session.
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: redirectTo,
-      shouldCreateUser: false,
-    },
-  });
-  return otpError?.message || resendError.message || "Unknown email delivery error.";
-}
 </script>

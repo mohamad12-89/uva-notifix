@@ -71,15 +71,13 @@
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
-import { supabase } from "../lib/supabase";
 import {
   refreshAuthProfile,
   signOutAuth,
+  updateLocalProfile,
   useAuthProfile,
 } from "../composables/useAuthProfile";
 
-const router = useRouter();
 const { authProfile } = useAuthProfile();
 
 const error = ref("");
@@ -117,28 +115,9 @@ async function saveProfile() {
     form.currentPassword || form.newPassword || form.confirmPassword,
   );
 
-  const updates = {
-    data: {
-      first_name: form.firstName.trim(),
-      last_name: form.lastName.trim(),
-    },
-  };
-
   if (wantsPasswordChange) {
-    if (!form.currentPassword) {
-      error.value = "Please enter your current password.";
-      return;
-    }
     if (!form.newPassword || !form.confirmPassword) {
       error.value = "Please fill out all new password fields.";
-      return;
-    }
-    const { error: reauthError } = await supabase.auth.signInWithPassword({
-      email: authProfile.value.email,
-      password: form.currentPassword,
-    });
-    if (reauthError) {
-      error.value = "Current password is incorrect.";
       return;
     }
     if (form.newPassword.length < 6) {
@@ -149,14 +128,12 @@ async function saveProfile() {
       error.value = "New password and confirmation do not match.";
       return;
     }
-    updates.password = form.newPassword;
   }
 
-  const { error: updateError } = await supabase.auth.updateUser(updates);
-  if (updateError) {
-    error.value = updateError.message || "Failed to update profile.";
-    return;
-  }
+  await updateLocalProfile({
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+  });
   await refreshAuthProfile();
 
   form.currentPassword = "";
@@ -166,13 +143,7 @@ async function saveProfile() {
 }
 
 async function signOut() {
-  try {
-    await signOutAuth();
-  } catch (e) {
-    console.error("Sign out failed:", e);
-  } finally {
-    // Hard redirect guarantees profile/session reset in UI immediately.
-    window.location.assign("/signup");
-  }
+  await signOutAuth();
+  window.location.assign("/signup");
 }
 </script>

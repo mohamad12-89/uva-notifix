@@ -6,27 +6,20 @@ Current architecture:
 
 - Laravel API for core app data (office hours, announcements, appointments, TA bios)
 - Vue 3 SPA frontend (Vite + Tailwind)
-- Supabase Auth for user accounts, sessions, and role-driven access control
+- Local/session-based auth mock for user accounts and roles (Supabase paused)
 
-## Supabase Auth + Roles (current)
+## Auth + Roles (current)
 
-The app now uses Supabase for:
+The app currently uses a local mock auth flow for:
 
-- email + password signup/login
-- email verification before protected access
-- session-based auth state
-- role lookup from a Supabase `roles` table (`student`, `ta`, or `professor`)
+- email + password signup/login UI
+- lightweight verification modal flow (demo mode)
+- per-tab session-based auth state
+- role lookup from hardcoded TA/professor emails (`student` or `ta_professor`)
 
 ### Required environment variables
 
-Set these in `.env`:
-
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are also defined in `.env.example`.
+No Supabase environment variables are required in the paused mode.
 
 ## Setup steps
 
@@ -60,7 +53,6 @@ npm install
 
 ### 1.1) Key JavaScript packages used (installed by `npm install`)
 
-- `@supabase/supabase-js` (auth, sessions, role-table queries)
 - `vue`, `vue-router` (frontend app + routing)
 - `vite`, `@vitejs/plugin-vue` (dev/build tooling)
 - `tailwindcss`, `@tailwindcss/vite` (styling)
@@ -88,37 +80,18 @@ Then set these values in `.env`:
 APP_URL=http://127.0.0.1:8080
 DB_CONNECTION=sqlite
 DB_DATABASE=database/database.sqlite
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 3) Configure Supabase
+### 3) Role mapping (hardcoded)
 
-In Supabase SQL editor, run:
+TA/Professor emails are currently hardcoded in `resources/js/composables/useAuthProfile.js`:
 
-```sql
--- see full script:
--- docs/supabase_roles_setup.sql
-```
+- `khg5bj@virginia.edu`
+- `cdd9sb@virginia.edu`
+- `xfw9vp@virginia.edu`
+- `uhu5nr@virginia.edu`
 
-The script creates:
-
-- `public.roles`
-- RLS policies for role-safe access
-- seed rows for TA/professor emails (roles split):
-  - `cdd9sb@virginia.edu` as `professor`
-  - `xfw9vp@virginia.edu` as `ta`
-  - `uhu5nr@virginia.edu` as `ta`
-  - (for testing student role) `khg5bj@virginia.edu` as `student`
-
-### 3.1) Configure email link verification
-
-The signup page uses Supabase email-link verification:
-
-1. Go to Supabase Dashboard -> Authentication -> Providers -> Email.
-2. Enable Email provider and keep Confirm email enabled.
-3. In Supabase Auth URL configuration, include your local and deployed app URLs as allowed redirect URLs.
-4. The app sets `emailRedirectTo` to `/signup`, so after clicking the email link the user returns to Notifix and is verified automatically.
+Any other `@virginia.edu` email is treated as `student`.
 
 ### 4) Start app
 
@@ -133,8 +106,7 @@ Open:
 ### 5) First-run validation checklist
 
 - `npm run build` completes without errors
-- Signup sends Supabase verification email
-- Clicking verification link returns to `/signup` and logs user in
+- Signup opens verification modal and allows continue flow
 - TA account can access `/instructor-dashboard`
 - Student account cannot access `/instructor-dashboard`
 
@@ -143,21 +115,18 @@ Open:
 ### Signup / login
 
 - `resources/js/pages/SignupPage.vue`
-  - Sign up flow with Supabase email verification link:
-    - `supabase.auth.signUp({ email, password, options: { emailRedirectTo, data } })`
-  - Login with Supabase:
-    - `supabase.auth.signInWithPassword({ email, password })`
+  - Sign up flow with local verification modal (demo mode)
+  - Login flow accepts any password for `@virginia.edu` emails
   - Verification:
-    - user clicks verification link from Supabase email
-    - app reads updated Supabase session and continues automatically
+    - user confirms from the modal and is logged into a per-tab local session
 
 ### Session + role bootstrap
 
 - `resources/js/composables/useAuthProfile.js`
   - `initializeAuth()`
   - `refreshAuthProfile()`
-  - `fetchRoleByEmail(email)` from Supabase `roles` table
-  - computed role flags: `isStudent`, `isTa`, `isProfessor`
+  - hardcoded role mapping by email
+  - computed role flags: `isStudent`, `isTaProfessor`
 
 ### Route protection
 
@@ -168,13 +137,9 @@ Open:
 
 ## Role-based behavior summary
 
-- `professor`:
+- `ta_professor`:
   - can access Instructor Dashboard
-  - can manage roles in dashboard
-  - can access TA/Professor actions in relevant pages
-- `ta`:
-  - no Instructor Dashboard access
-  - can access TA actions in relevant pages (e.g. bios, appointments)
+  - can access TA-only actions in relevant pages
 - `student`:
   - no Instructor Dashboard access
   - student-only actions remain available
@@ -221,16 +186,8 @@ Open:
 
 ## Notes
 
-- Supabase is now the primary auth/session source.
-- If you change role rows in Supabase, users may need to refresh or re-authenticate to pick up role changes immediately.
+- Supabase integration is currently paused.
+- Current auth/profile state is stored in `sessionStorage` per tab.
 - If you hit build errors, run:
   - `npm run build`
   - check for merge markers (`<<<<<<<`, `=======`, `>>>>>>>`).
-
-## Troubleshooting
-
-### Missing Supabase Dependency Error
-
-- **Symptom:** `Failed to resolve import "@supabase/supabase-js" from "resources/js/lib/supabase.js"`
-- **Cause:** The Supabase package is not installed in your local `node_modules` directory.
-- **Solution:** Stop the dev server (`Ctrl + C`), run `npm install @supabase/supabase-js`, and restart the server with `npm run dev:full`.
