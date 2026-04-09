@@ -176,3 +176,11 @@ Open:
 - If you hit build errors, run:
   - `npm run build`
   - check for merge markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+
+## Troubleshooting
+
+### Missing Supabase Dependency Error
+
+- **Symptom:** `Failed to resolve import "@supabase/supabase-js" from "resources/js/lib/supabase.js"`
+- **Cause:** The Supabase package is not installed in your local `node_modules` directory.
+- **Solution:** Stop the dev server (`Ctrl + C`), run `npm install @supabase/supabase-js`, and restart the server with `npm run dev:full`.
