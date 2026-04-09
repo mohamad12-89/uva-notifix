@@ -13,8 +13,7 @@ import SignupPage from "./pages/SignupPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
 import {
   getStoredAuthProfile,
-  isTaProfessorEmail,
-  isUserVerified,
+  initializeAuth,
 } from "./composables/useAuthProfile";
 
 // Apply a global CSS rule to make all buttons use the pointer cursor
@@ -41,15 +40,19 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
-  const isVerified = isUserVerified();
+router.beforeEach(async (to) => {
+  await initializeAuth();
+  const profile = await getStoredAuthProfile();
+  const isVerified = Boolean(profile?.verified);
+
   if (!isVerified && to.path !== "/signup") return "/signup";
   if (isVerified && to.path === "/signup") return "/";
+
   if (to.path === "/instructor-dashboard") {
-    const p = getStoredAuthProfile();
-    if (!isTaProfessorEmail(p?.email)) return "/";
+    if (profile?.role !== "ta_professor") return "/";
   }
   return true;
 });
 
+await initializeAuth();
 createApp(App).use(router).mount("#app");

@@ -1,35 +1,11 @@
 import { computed, ref } from "vue";
+import { supabase } from "../lib/supabase";
 
-// Per-tab auth session (prevents one tab from changing another tab's role/view)
-const AUTH_STORAGE_KEY = "notifixAuthProfile";
-const AUTH_EVENT = "notifix-auth-updated";
-
-/** Only these @virginia.edu accounts get TA/Professor UI (any password in demo mode). */
-const TA_PROFESSOR_EMAILS = new Set(
-  [
-    "khg5bj@virginia.edu",
-    "cdd9sb@virginia.edu",
-    "xfw9vp@virginia.edu",
-    "uhu5nr@virginia.edu",
-  ].map((e) => e.toLowerCase()),
-);
-
-const authProfile = ref(readProfile());
-
-function readProfile() {
-  try {
-    const raw = JSON.parse(sessionStorage.getItem(AUTH_STORAGE_KEY) || "null");
-    if (!raw) return null;
-    return { ...raw, role: authRoleFromEmail(raw.email) };
-  } catch {
-    return null;
-  }
-}
-
-/** For router guards / non-reactive reads */
-export function getStoredAuthProfile() {
-  return readProfile();
-}
+const authProfile = ref(null);
+const authReady = ref(false);
+const authError = ref("");
+let initialized = false;
+let authSubscription = null;
 
 function normalizeEmail(email) {
   return String(email || "")
@@ -37,37 +13,105 @@ function normalizeEmail(email) {
     .toLowerCase();
 }
 
-export function isTaProfessorEmail(email) {
-  const e = normalizeEmail(email);
-  if (!e.endsWith("@virginia.edu")) return false;
-  return TA_PROFESSOR_EMAILS.has(e);
-}
-
-export function authRoleFromEmail(email) {
-  return isTaProfessorEmail(email) ? "ta" : "student";
-}
-
-function writeProfile(profile) {
-  const withRole = {
-    ...profile,
-    role: authRoleFromEmail(profile?.email),
+function namesFromUser(user) {
+  const meta = user?.user_metadata || {};
+  return {
+    firstName: meta.first_name || meta.firstName || "",
+    lastName: meta.last_name || meta.lastName || "",
   };
-  authProfile.value = withRole;
-  sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(withRole));
-  window.dispatchEvent(new Event(AUTH_EVENT));
 }
 
-function clearProfile() {
-  authProfile.value = null;
-  sessionStorage.removeItem(AUTH_STORAGE_KEY);
-  window.dispatchEvent(new Event(AUTH_EVENT));
+export async function fetchRoleByEmail(email) {
+  const e = normalizeEmail(email);
+  if (!e) return "student";
+
+  const { data, error } = await supabase
+    .from("roles")
+    .select("role")
+    .eq("email", e)
+    .maybeSingle();
+
+  // PGRST116 = no rows returned; default to student.
+  if (error && error.code !== "PGRST116") {
+    console.error("Failed to fetch role:", error);
+  }
+
+  return data?.role === "ta_professor" ? "ta_professor" : "student";
 }
 
-if (typeof window !== "undefined") {
-  // Keep same-tab consumers synced when auth changes.
-  window.addEventListener(AUTH_EVENT, () => {
-    authProfile.value = readProfile();
+export async function refreshAuthProfile() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    authError.value = error.message;
+    authProfile.value = null;
+    return null;
+  }
+
+  if (!session?.user) {
+    authProfile.value = null;
+    authError.value = "";
+    return null;
+  }
+
+  const user = session.user;
+  const { firstName, lastName } = namesFromUser(user);
+  const role = await fetchRoleByEmail(user.email);
+
+  authProfile.value = {
+    id: user.id,
+    email: normalizeEmail(user.email),
+    firstName,
+    lastName,
+    role,
+    verified: Boolean(user.email_confirmed_at),
+    verifiedAt: user.email_confirmed_at || null,
+  };
+  authError.value = "";
+  return authProfile.value;
+}
+
+export async function initializeAuth() {
+  if (initialized) return;
+  initialized = true;
+
+  await refreshAuthProfile();
+  authReady.value = true;
+
+  const { data } = supabase.auth.onAuthStateChange(async () => {
+    await refreshAuthProfile();
+    authReady.value = true;
   });
+  authSubscription = data.subscription;
+}
+
+export function disposeAuth() {
+  if (authSubscription) {
+    authSubscription.unsubscribe();
+    authSubscription = null;
+  }
+  initialized = false;
+}
+
+/** For router guards / non-reactive checks */
+export async function getStoredAuthProfile() {
+  if (!initialized) {
+    await initializeAuth();
+  }
+  return authProfile.value;
+}
+
+export async function isUserVerified() {
+  const p = await getStoredAuthProfile();
+  return Boolean(p?.verified);
+}
+
+export async function signOutAuth() {
+  await supabase.auth.signOut();
+  authProfile.value = null;
 }
 
 export function useAuthProfile() {
@@ -77,23 +121,19 @@ export function useAuthProfile() {
     return `${p.firstName[0]}${p.lastName[0]}`.toUpperCase();
   });
 
-  const isTaProfessor = computed(() =>
-    isTaProfessorEmail(authProfile.value?.email),
+  const isTaProfessor = computed(
+    () => authProfile.value?.role === "ta_professor",
   );
-
-  const isStudent = computed(() => !isTaProfessor.value);
+  const isStudent = computed(
+    () => Boolean(authProfile.value) && authProfile.value?.role !== "ta_professor",
+  );
 
   return {
     authProfile,
+    authReady,
+    authError,
     initials,
     isTaProfessor,
     isStudent,
-    setAuthProfile: writeProfile,
-    clearAuthProfile: clearProfile,
   };
-}
-
-export function isUserVerified() {
-  const p = readProfile();
-  return Boolean(p?.verified);
 }

@@ -183,6 +183,83 @@
           </table>
         </div>
       </div>
+
+      <div class="mt-8 space-y-4">
+        <h4 class="font-medium text-slate-200">TA/Professor Email Management</h4>
+        <p class="text-sm text-slate-400">
+          Add, edit, or remove TA/professor emails used for elevated dashboard access.
+        </p>
+
+        <form
+          class="grid gap-3 rounded-lg border border-white/10 bg-slate-900/50 p-4 md:grid-cols-[1fr_auto_auto]"
+          @submit.prevent="saveRoleEmail"
+        >
+          <input
+            v-model.trim="roleEmailForm.email"
+            type="email"
+            required
+            class="input w-full"
+            placeholder="example@virginia.edu"
+          />
+          <button type="submit" class="button-primary">
+            {{ roleEmailForm.editingId ? "Update Email" : "Add TA/Professor" }}
+          </button>
+          <button
+            v-if="roleEmailForm.editingId"
+            type="button"
+            class="button-secondary"
+            @click="resetRoleForm"
+          >
+            Cancel
+          </button>
+        </form>
+
+        <p v-if="roleMessage" class="text-sm text-green-400">{{ roleMessage }}</p>
+        <p v-if="roleError" class="text-sm text-red-400">{{ roleError }}</p>
+
+        <div class="overflow-hidden rounded-lg border border-white/10 bg-slate-900/50">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="border-b border-white/10 bg-slate-800/50 text-xs uppercase text-slate-400">
+              <tr>
+                <th class="px-4 py-3">Email</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in taRoleRows"
+                :key="item.id"
+                class="border-b border-white/5 hover:bg-white/5"
+              >
+                <td class="px-4 py-3">{{ item.email }}</td>
+                <td class="px-4 py-3 text-right">
+                  <div class="inline-flex gap-2">
+                    <button
+                      type="button"
+                      class="rounded bg-slate-700 px-3 py-1 text-xs text-white"
+                      @click="startEditRoleEmail(item)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded bg-red-600 px-3 py-1 text-xs text-white"
+                      @click="removeRoleEmail(item)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!taRoleRows.length">
+                <td colspan="2" class="px-4 py-8 text-center text-slate-500">
+                  No TA/professor role emails configured.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -190,14 +267,46 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { api } from "../lib/api";
+import { supabase } from "../lib/supabase";
+import { refreshAuthProfile, useAuthProfile } from "../composables/useAuthProfile";
 
 const announcementForm = reactive({ title: "", body: "" });
 const isPosting = ref(false);
 const postSuccess = ref(false);
+const { isTaProfessor, authProfile } = useAuthProfile();
 
 const analyticsData = ref([]);
 const activeSessions = ref(0);
 const studentStats = ref([]);
+const taRoleRows = ref([]);
+const roleError = ref("");
+const roleMessage = ref("");
+const roleEmailForm = reactive({
+  email: "",
+  editingId: null,
+});
+
+const normalizeEmail = (email) =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
+
+const isValidUvaEmail = (email) => /@virginia\.edu$/i.test(email);
+
+const loadTaRoleRows = async () => {
+  roleError.value = "";
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id,email,role")
+    .eq("role", "ta_professor")
+    .order("email", { ascending: true });
+
+  if (error) {
+    roleError.value = error.message || "Failed to load TA/professor emails.";
+    return;
+  }
+  taRoleRows.value = data || [];
+};
 
 const fetchAnalytics = async () => {
   try {
@@ -243,6 +352,92 @@ const postAnnouncement = async () => {
   }
 };
 
+const resetRoleForm = () => {
+  roleEmailForm.email = "";
+  roleEmailForm.editingId = null;
+};
+
+const startEditRoleEmail = (item) => {
+  roleError.value = "";
+  roleMessage.value = "";
+  roleEmailForm.editingId = item.id;
+  roleEmailForm.email = item.email;
+};
+
+const saveRoleEmail = async () => {
+  roleError.value = "";
+  roleMessage.value = "";
+
+  if (!isTaProfessor.value) {
+    roleError.value = "Only TA/professor users can manage role emails.";
+    return;
+  }
+
+  const email = normalizeEmail(roleEmailForm.email);
+  if (!isValidUvaEmail(email)) {
+    roleError.value = "Email must end with @virginia.edu.";
+    return;
+  }
+
+  const duplicate = taRoleRows.value.find(
+    (row) => row.email === email && row.id !== roleEmailForm.editingId,
+  );
+  if (duplicate) {
+    roleError.value = "That email already exists in TA/professor roles.";
+    return;
+  }
+
+  if (roleEmailForm.editingId) {
+    const { error } = await supabase
+      .from("roles")
+      .update({ email })
+      .eq("id", roleEmailForm.editingId);
+    if (error) {
+      roleError.value = error.message || "Failed to update role email.";
+      return;
+    }
+    roleMessage.value = "Role email updated.";
+  } else {
+    const { error } = await supabase
+      .from("roles")
+      .insert({ email, role: "ta_professor" });
+    if (error) {
+      roleError.value = error.message || "Failed to add role email.";
+      return;
+    }
+    roleMessage.value = "Role email added.";
+  }
+
+  // If this user changed their own role row, refresh local role snapshot.
+  if (normalizeEmail(authProfile.value?.email) === email) {
+    await refreshAuthProfile();
+  }
+
+  resetRoleForm();
+  await loadTaRoleRows();
+};
+
+const removeRoleEmail = async (item) => {
+  roleError.value = "";
+  roleMessage.value = "";
+  if (!isTaProfessor.value) return;
+  if (!confirm(`Delete TA/professor access for ${item.email}?`)) return;
+
+  const { error } = await supabase.from("roles").delete().eq("id", item.id);
+  if (error) {
+    roleError.value = error.message || "Failed to delete role email.";
+    return;
+  }
+  roleMessage.value = "Role email removed.";
+  if (roleEmailForm.editingId === item.id) {
+    resetRoleForm();
+  }
+  if (normalizeEmail(authProfile.value?.email) === normalizeEmail(item.email)) {
+    await refreshAuthProfile();
+  }
+  await loadTaRoleRows();
+};
+
 const exportCSV = () => {
   // Define CSV headers and generate rows
   const headers = ["Week", "TA Name", "Attendance Volume"];
@@ -277,5 +472,6 @@ const exportCSV = () => {
 
 onMounted(() => {
   fetchAnalytics();
+  loadTaRoleRows();
 });
 </script>

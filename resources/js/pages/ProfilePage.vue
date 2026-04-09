@@ -72,10 +72,15 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { useAuthProfile } from "../composables/useAuthProfile";
+import { supabase } from "../lib/supabase";
+import {
+  refreshAuthProfile,
+  signOutAuth,
+  useAuthProfile,
+} from "../composables/useAuthProfile";
 
 const router = useRouter();
-const { authProfile, setAuthProfile, clearAuthProfile } = useAuthProfile();
+const { authProfile } = useAuthProfile();
 
 const error = ref("");
 const message = ref("");
@@ -95,7 +100,7 @@ onMounted(() => {
   form.email = authProfile.value.email || "";
 });
 
-function saveProfile() {
+async function saveProfile() {
   error.value = "";
   message.value = "";
   if (!authProfile.value) {
@@ -112,13 +117,27 @@ function saveProfile() {
     form.currentPassword || form.newPassword || form.confirmPassword,
   );
 
-  let nextPassword = authProfile.value.password || "";
+  const updates = {
+    data: {
+      first_name: form.firstName.trim(),
+      last_name: form.lastName.trim(),
+    },
+  };
+
   if (wantsPasswordChange) {
+    if (!form.currentPassword) {
+      error.value = "Please enter your current password.";
+      return;
+    }
     if (!form.newPassword || !form.confirmPassword) {
       error.value = "Please fill out all new password fields.";
       return;
     }
-    if ((authProfile.value.password || "") !== form.currentPassword) {
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: authProfile.value.email,
+      password: form.currentPassword,
+    });
+    if (reauthError) {
       error.value = "Current password is incorrect.";
       return;
     }
@@ -130,16 +149,15 @@ function saveProfile() {
       error.value = "New password and confirmation do not match.";
       return;
     }
-    nextPassword = form.newPassword;
+    updates.password = form.newPassword;
   }
 
-  setAuthProfile({
-    ...authProfile.value,
-    firstName: form.firstName,
-    lastName: form.lastName,
-    email: form.email,
-    password: nextPassword,
-  });
+  const { error: updateError } = await supabase.auth.updateUser(updates);
+  if (updateError) {
+    error.value = updateError.message || "Failed to update profile.";
+    return;
+  }
+  await refreshAuthProfile();
 
   form.currentPassword = "";
   form.newPassword = "";
@@ -147,8 +165,14 @@ function saveProfile() {
   message.value = "Profile updated successfully.";
 }
 
-function signOut() {
-  clearAuthProfile();
-  router.replace("/signup");
+async function signOut() {
+  try {
+    await signOutAuth();
+  } catch (e) {
+    console.error("Sign out failed:", e);
+  } finally {
+    // Hard redirect guarantees profile/session reset in UI immediately.
+    window.location.assign("/signup");
+  }
 }
 </script>
