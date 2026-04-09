@@ -15,7 +15,7 @@ The app now uses Supabase for:
 - email + password signup/login
 - email verification before protected access
 - session-based auth state
-- role lookup from a Supabase `roles` table (`student` or `ta_professor`)
+- role lookup from a Supabase `roles` table (`student`, `ta`, or `professor`)
 
 ### Required environment variables
 
@@ -66,10 +66,10 @@ The script creates:
 
 - `public.roles`
 - RLS policies for role-safe access
-- seed rows for TA/professor emails:
-  - `cdd9sb@virginia.edu`
-  - `xfw9vp@virginia.edu`
-  - `uhu5nr@virginia.edu`
+- seed rows for TA/professor emails (roles split):
+  - `cdd9sb@virginia.edu` as `professor`
+  - `xfw9vp@virginia.edu` as `ta`
+  - `uhu5nr@virginia.edu` as `ta`
   - (for testing student role) `khg5bj@virginia.edu` as `student`
 
 ### 3.1) Configure email link verification
@@ -110,7 +110,7 @@ Open:
   - `initializeAuth()`
   - `refreshAuthProfile()`
   - `fetchRoleByEmail(email)` from Supabase `roles` table
-  - computed role flags: `isStudent`, `isTaProfessor`
+  - computed role flags: `isStudent`, `isTa`, `isProfessor`
 
 ### Route protection
 
@@ -121,10 +121,13 @@ Open:
 
 ## Role-based behavior summary
 
-- `ta_professor`:
+- `professor`:
   - can access Instructor Dashboard
-  - can manage TA/professor role emails in dashboard
-  - can access TA-only actions in relevant pages
+  - can manage roles in dashboard
+  - can access TA/Professor actions in relevant pages
+- `ta`:
+  - no Instructor Dashboard access
+  - can access TA actions in relevant pages (e.g. bios, appointments)
 - `student`:
   - no Instructor Dashboard access
   - student-only actions remain available

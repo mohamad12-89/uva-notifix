@@ -36,7 +36,7 @@ export async function fetchRoleByEmail(email) {
     console.error("Failed to fetch role:", error);
   }
 
-  return data?.role === "ta_professor" ? "ta_professor" : "student";
+  return ["professor", "ta"].includes(data?.role) ? data.role : "student";
 }
 
 export async function refreshAuthProfile() {
@@ -106,34 +106,4 @@ export async function getStoredAuthProfile() {
 
 export async function isUserVerified() {
   const p = await getStoredAuthProfile();
-  return Boolean(p?.verified);
-}
-
-export async function signOutAuth() {
-  await supabase.auth.signOut();
-  authProfile.value = null;
-}
-
-export function useAuthProfile() {
-  const initials = computed(() => {
-    const p = authProfile.value;
-    if (!p?.firstName || !p?.lastName) return "";
-    return `${p.firstName[0]}${p.lastName[0]}`.toUpperCase();
-  });
-
-  const isTaProfessor = computed(
-    () => authProfile.value?.role === "ta_professor",
-  );
-  const isStudent = computed(
-    () => Boolean(authProfile.value) && authProfile.value?.role !== "ta_professor",
-  );
-
-  return {
-    authProfile,
-    authReady,
-    authError,
-    initials,
-    isTaProfessor,
-    isStudent,
-  };
-}
+  retur
