@@ -30,6 +30,25 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ## Setup steps
 
+### 0) Prerequisites (install first)
+
+Your friend should install these before running the project:
+
+- Git
+- PHP 8.2+ (with `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`)
+- Composer 2.x
+- Node.js 20+ and npm
+- SQLite (or at least SQLite support enabled in PHP)
+
+Quick version checks:
+
+```bash
+php -v
+composer -V
+node -v
+npm -v
+```
+
 ### 1) Clone and install
 
 ```bash
@@ -39,11 +58,21 @@ composer install
 npm install
 ```
 
+### 1.1) Key JavaScript packages used (installed by `npm install`)
+
+- `@supabase/supabase-js` (auth, sessions, role-table queries)
+- `vue`, `vue-router` (frontend app + routing)
+- `vite`, `@vitejs/plugin-vue` (dev/build tooling)
+- `tailwindcss`, `@tailwindcss/vite` (styling)
+- `axios` (API requests)
+- `concurrently` (runs Laravel PHP server + Vite together)
+
 ### 2) App env and Laravel DB
 
 ```bash
 cp .env.example .env
 php artisan key:generate
+New-Item -Path database/database.sqlite -ItemType File -Force  # PowerShell
 php artisan migrate
 ```
 
@@ -51,6 +80,16 @@ On Windows PowerShell, use:
 
 ```powershell
 copy .env.example .env
+```
+
+Then set these values in `.env`:
+
+```env
+APP_URL=http://127.0.0.1:8080
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### 3) Configure Supabase
@@ -90,6 +129,14 @@ npm run dev:full
 Open:
 
 - [http://127.0.0.1:8080](http://127.0.0.1:8080)
+
+### 5) First-run validation checklist
+
+- `npm run build` completes without errors
+- Signup sends Supabase verification email
+- Clicking verification link returns to `/signup` and logs user in
+- TA account can access `/instructor-dashboard`
+- Student account cannot access `/instructor-dashboard`
 
 ## Frontend auth code locations
 

@@ -220,6 +220,10 @@ async function startVerification() {
     return;
   }
 
+  // Force a confirmation email send for cases where signUp succeeds but no email arrives
+  // (for example existing unverified accounts).
+  await sendConfirmationEmail(normalizedEmail);
+
   verificationEmail.value = normalizedEmail;
   showVerificationModal.value = true;
   verificationError.value = "";
@@ -291,15 +295,10 @@ async function checkVerificationStatus(showPendingMessage = true) {
 async function resendVerificationEmail() {
   verificationError.value = "";
   verificationNote.value = "";
-  const redirectTo = `${window.location.origin}/signup`;
-  const { error: resendError } = await supabase.auth.resend({
-    type: "signup",
-    email: verificationEmail.value,
-    options: { emailRedirectTo: redirectTo },
-  });
+  const resendError = await sendConfirmationEmail(verificationEmail.value);
   if (resendError) {
     verificationError.value =
-      resendError.message ||
+      resendError ||
       "Unable to resend verification email. Check Supabase email provider settings.";
     return;
   }
@@ -332,6 +331,21 @@ async function login() {
   });
 
   if (loginError) {
+    const normalizedEmail = loginForm.email.trim().toLowerCase();
+    const isUnverifiedLogin =
+      /confirm your email|email not confirmed|not confirmed/i.test(
+        loginError.message || "",
+      );
+    if (isUnverifiedLogin) {
+      const resendError = await sendConfirmationEmail(normalizedEmail);
+      if (resendError) {
+        error.value = `Email is not verified yet. We could not resend verification email: ${resendError}`;
+      } else {
+        error.value =
+          "Email is not verified yet. We sent a fresh verification link to your inbox.";
+      }
+      return;
+    }
     error.value = loginError.message || "Invalid email or password.";
     return;
   }
@@ -357,4 +371,28 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   clearVerificationTimers();
 });
+
+async function sendConfirmationEmail(email) {
+  const redirectTo = `${window.location.origin}/signup`;
+  const { error: resendError } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: redirectTo },
+  });
+
+  if (!resendError) {
+    return "";
+  }
+
+  // Fallback for some Supabase setups where resend/signup is restricted:
+  // send a magic-link style email users can still click to return and verify session.
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: false,
+    },
+  });
+  return otpError?.message || resendError.message || "Unknown email delivery error.";
+}
 </script>
