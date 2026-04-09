@@ -25,9 +25,9 @@
         </RouterLink>
       </div>
       <RouterLink
-        v-if="initials"
+        v-if="authProfile?.verified"
         to="/profile"
-        class="ml-3 flex h-10 w-10 items-center justify-center rounded-full border border-uva-orange/60 bg-uva-orange/15 text-sm font-bold text-uva-orange shadow-[0_0_18px_rgba(248,76,30,0.25)]"
+        class="ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-uva-orange/60 bg-uva-orange/15 text-sm font-bold text-uva-orange shadow-[0_0_18px_rgba(248,76,30,0.25)]"
         :class="route.path === '/profile' ? 'ring-2 ring-uva-orange/70' : ''"
         :title="authProfile?.email || 'Open profile settings'"
       >

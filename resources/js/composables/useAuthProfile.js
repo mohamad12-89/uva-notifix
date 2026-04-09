@@ -110,11 +110,26 @@ export async function signOutAuth() {
   sessionStorage.removeItem(AUTH_KEY);
 }
 
+function badgeInitials(profile) {
+  const p = profile;
+  const fn = p?.firstName?.trim();
+  const ln = p?.lastName?.trim();
+  if (fn && ln) {
+    return `${fn[0]}${ln[0]}`.toUpperCase();
+  }
+  const local = String(p?.email || "")
+    .split("@")[0]
+    .replace(/[^a-z0-9]/gi, "");
+  if (local.length >= 2) return local.slice(0, 2).toUpperCase();
+  if (local.length === 1) return `${local[0]}${local[0]}`.toUpperCase();
+  return "?";
+}
+
 export function useAuthProfile() {
   const initials = computed(() => {
     const p = authProfile.value;
-    if (!p?.firstName || !p?.lastName) return "";
-    return `${p.firstName[0]}${p.lastName[0]}`.toUpperCase();
+    if (!p) return "";
+    return badgeInitials(p);
   });
 
   const isTaProfessor = computed(() => authProfile.value?.role === "ta_professor");
