@@ -37,7 +37,7 @@
         </button>
       </div>
 
-      <form v-if="authMode === 'signup' && step === 'signup'" class="space-y-3" @submit.prevent="startVerification">
+      <form v-if="authMode === 'signup'" class="space-y-3" @submit.prevent="startVerification">
         <input
           v-model.trim="form.firstName"
           required
@@ -70,30 +70,6 @@
         </button>
       </form>
 
-      <form v-else-if="authMode === 'signup'" class="space-y-3" @submit.prevent="finishVerification">
-        <p class="rounded-lg bg-white/10 p-3 text-sm text-slate-200">
-          A verification code was sent to <span class="font-semibold">{{ form.email }}</span>.
-          Enter that code below to verify your email.
-        </p>
-        <input
-          v-model.trim="verificationCode"
-          required
-          class="input w-full text-center tracking-[0.3em]"
-          inputmode="numeric"
-          maxlength="6"
-          placeholder="123456"
-        />
-        <button class="button-primary mt-2 w-full" type="submit">
-          Verify Code
-        </button>
-        <button class="button-secondary w-full" type="button" @click="resendCode">
-          Resend Code
-        </button>
-        <button class="button-secondary w-full" type="button" @click="switchToSignup">
-          Use a Different Email
-        </button>
-      </form>
-
       <form v-else class="space-y-3" @submit.prevent="login">
         <input
           v-model.trim="loginForm.email"
@@ -122,11 +98,47 @@
         {{ message }}
       </p>
     </div>
+
+    <div
+      v-if="showVerificationModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
+    >
+      <div class="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900 p-6 shadow-2xl">
+        <h3 class="text-xl font-bold text-uva-orange">Verify your email</h3>
+        <p class="mt-2 text-sm text-slate-200">
+          We sent a verification link to
+          <span class="font-semibold">{{ verificationEmail }}</span>.
+          Click the link in your email to continue.
+        </p>
+        <p class="mt-3 rounded-lg bg-white/10 p-3 text-sm text-slate-200">
+          Time remaining: <span class="font-semibold">{{ verificationSecondsRemaining }}s</span>
+        </p>
+
+        <div class="mt-4 grid grid-cols-1 gap-2">
+          <button class="button-primary w-full" type="button" @click="checkVerificationStatus">
+            I clicked the verification link
+          </button>
+          <button class="button-secondary w-full" type="button" @click="resendVerificationEmail">
+            Resend verification email
+          </button>
+          <button class="button-secondary w-full" type="button" @click="changeSignupEmail">
+            Change email
+          </button>
+        </div>
+
+        <p v-if="verificationError" class="mt-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">
+          {{ verificationError }}
+        </p>
+        <p v-if="verificationNote" class="mt-4 rounded-lg bg-green-100 p-3 text-sm text-green-700">
+          {{ verificationNote }}
+        </p>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "../lib/supabase";
 import {
@@ -138,10 +150,15 @@ import {
 const router = useRouter();
 
 const authMode = ref("signup");
-const step = ref("signup");
 const error = ref("");
 const message = ref("");
-const verificationCode = ref("");
+const showVerificationModal = ref(false);
+const verificationEmail = ref("");
+const verificationSecondsRemaining = ref(60);
+const verificationError = ref("");
+const verificationNote = ref("");
+let verificationCountdownInterval = null;
+let verificationPollInterval = null;
 
 const form = reactive({
   firstName: "",
@@ -160,10 +177,8 @@ function isValidUvaEmail(email) {
 
 function switchToSignup() {
   authMode.value = "signup";
-  step.value = "signup";
   error.value = "";
   message.value = "";
-  verificationCode.value = "";
 }
 
 function switchToLogin() {
@@ -186,77 +201,117 @@ async function startVerification() {
     return;
   }
 
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email: form.email.trim().toLowerCase(),
+  const normalizedEmail = form.email.trim().toLowerCase();
+  const redirectTo = `${window.location.origin}/signup`;
+  const { error: signUpError } = await supabase.auth.signUp({
+    email: normalizedEmail,
+    password: form.password,
     options: {
-      shouldCreateUser: true,
+      emailRedirectTo: redirectTo,
+      data: {
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+      },
     },
   });
 
-  if (otpError) {
-    error.value = otpError.message || "Unable to send verification code.";
+  if (signUpError) {
+    error.value = signUpError.message || "Unable to start sign up.";
     return;
   }
 
-  step.value = "verify";
-  message.value = "Verification code sent. Check your email.";
+  verificationEmail.value = normalizedEmail;
+  showVerificationModal.value = true;
+  verificationError.value = "";
+  verificationNote.value = "Verification email sent.";
+  startVerificationCountdown();
+  startVerificationPolling();
 }
 
-async function finishVerification() {
-  error.value = "";
-  message.value = "";
-
-  if (!/^\d{6}$/.test(verificationCode.value)) {
-    error.value = "Enter a valid 6-digit verification code.";
-    return;
+function clearVerificationTimers() {
+  if (verificationCountdownInterval) {
+    clearInterval(verificationCountdownInterval);
+    verificationCountdownInterval = null;
   }
-
-  const email = form.email.trim().toLowerCase();
-  const { error: verifyError } = await supabase.auth.verifyOtp({
-    email,
-    token: verificationCode.value,
-    type: "email",
-  });
-  if (verifyError) {
-    error.value =
-      verifyError.message || "Invalid verification code. Please try again.";
-    return;
+  if (verificationPollInterval) {
+    clearInterval(verificationPollInterval);
+    verificationPollInterval = null;
   }
+}
 
-  const { error: updateError } = await supabase.auth.updateUser({
-    password: form.password,
-    data: {
-      first_name: form.firstName.trim(),
-      last_name: form.lastName.trim(),
-    },
-  });
-  if (updateError) {
-    error.value = updateError.message || "Verification succeeded but profile setup failed.";
-    return;
-  }
+function closeVerificationModal() {
+  showVerificationModal.value = false;
+  verificationError.value = "";
+  verificationNote.value = "";
+  clearVerificationTimers();
+}
 
+function startVerificationCountdown() {
+  clearVerificationTimers();
+  verificationSecondsRemaining.value = 60;
+  verificationCountdownInterval = setInterval(() => {
+    verificationSecondsRemaining.value = Math.max(
+      0,
+      verificationSecondsRemaining.value - 1,
+    );
+    if (verificationSecondsRemaining.value === 0) {
+      verificationError.value =
+        "Verification timed out. Resend the email or change your address.";
+      clearVerificationTimers();
+    }
+  }, 1000);
+}
+
+function startVerificationPolling() {
+  verificationPollInterval = setInterval(async () => {
+    if (!showVerificationModal.value || verificationSecondsRemaining.value <= 0) {
+      return;
+    }
+    await checkVerificationStatus(false);
+  }, 4000);
+}
+
+async function checkVerificationStatus(showPendingMessage = true) {
+  verificationError.value = "";
   await refreshAuthProfile();
   const profile = await getStoredAuthProfile();
-  if (!profile?.verified) {
-    error.value = "Verification not confirmed yet. Please try again.";
+  if (profile?.verified) {
+    closeVerificationModal();
+    authMode.value = "login";
+    message.value = "Email verified successfully. You can now use Notifix.";
+    router.replace("/");
     return;
   }
-  router.replace("/");
+  if (showPendingMessage) {
+    verificationNote.value =
+      "Still waiting for verification. Click the link in your email, then try again.";
+  }
 }
 
-async function resendCode() {
-  error.value = "";
-  message.value = "";
-  const email = form.email.trim().toLowerCase();
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
+async function resendVerificationEmail() {
+  verificationError.value = "";
+  verificationNote.value = "";
+  const redirectTo = `${window.location.origin}/signup`;
+  const { error: resendError } = await supabase.auth.resend({
+    type: "signup",
+    email: verificationEmail.value,
+    options: { emailRedirectTo: redirectTo },
   });
-  if (otpError) {
-    error.value = otpError.message || "Unable to resend verification code.";
+  if (resendError) {
+    verificationError.value =
+      resendError.message ||
+      "Unable to resend verification email. Check Supabase email provider settings.";
     return;
   }
-  message.value = "A new verification code has been sent.";
+  verificationNote.value = "Verification email resent.";
+  startVerificationCountdown();
+  startVerificationPolling();
+}
+
+function changeSignupEmail() {
+  closeVerificationModal();
+  verificationEmail.value = "";
+  message.value = "Update your email and sign up again.";
 }
 
 async function login() {
@@ -297,5 +352,9 @@ onMounted(async () => {
   if (profile?.verified) {
     router.replace("/");
   }
+});
+
+onBeforeUnmount(() => {
+  clearVerificationTimers();
 });
 </script>

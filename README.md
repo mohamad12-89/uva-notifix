@@ -67,10 +67,19 @@ The script creates:
 - `public.roles`
 - RLS policies for role-safe access
 - seed rows for TA/professor emails:
-  - `khg5bj@virginia.edu`
   - `cdd9sb@virginia.edu`
   - `xfw9vp@virginia.edu`
   - `uhu5nr@virginia.edu`
+  - (for testing student role) `khg5bj@virginia.edu` as `student`
+
+### 3.1) Configure email link verification
+
+The signup page uses Supabase email-link verification:
+
+1. Go to Supabase Dashboard -> Authentication -> Providers -> Email.
+2. Enable Email provider and keep Confirm email enabled.
+3. In Supabase Auth URL configuration, include your local and deployed app URLs as allowed redirect URLs.
+4. The app sets `emailRedirectTo` to `/signup`, so after clicking the email link the user returns to Notifix and is verified automatically.
 
 ### 4) Start app
 
@@ -87,13 +96,13 @@ Open:
 ### Signup / login
 
 - `resources/js/pages/SignupPage.vue`
-  - Sign up with Supabase:
+  - Sign up flow with Supabase email verification link:
     - `supabase.auth.signUp({ email, password, options: { emailRedirectTo, data } })`
   - Login with Supabase:
     - `supabase.auth.signInWithPassword({ email, password })`
   - Verification:
-    - user clicks email link from Supabase
-    - app confirms session + `email_confirmed_at`
+    - user clicks verification link from Supabase email
+    - app reads updated Supabase session and continues automatically
 
 ### Session + role bootstrap
 
