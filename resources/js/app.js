@@ -49,9 +49,10 @@ router.beforeEach(async (to) => {
   if (isVerified && to.path === "/signup") return "/";
 
   if (to.path === "/instructor-dashboard") {
-    if (profile?.role !== "professor") return "/";
+    if (profile?.role !== "ta_professor") return "/";
   }
   return true;
 });
 
-await i;
+await initializeAuth();
+createApp(App).use(router).mount("#app");
