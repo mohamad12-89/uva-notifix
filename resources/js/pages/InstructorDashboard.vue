@@ -184,30 +184,131 @@
         </div>
       </div>
 
-      <div class="mt-8 space-y-4">
-        <h4 class="font-medium text-slate-200">TA/Professor Access Emails</h4>
-        <p class="text-sm text-slate-400">
-          Supabase is paused. Access is currently controlled by a hardcoded list.
-        </p>
-        <div class="overflow-hidden rounded-lg border border-white/10 bg-slate-900/50">
-          <table class="w-full text-left text-sm text-slate-300">
-            <thead class="border-b border-white/10 bg-slate-800/50 text-xs uppercase text-slate-400">
-              <tr>
-                <th class="px-4 py-3">Email</th>
-                <th class="px-4 py-3">Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="email in taRoleEmails"
-                :key="email"
-                class="border-b border-white/5 hover:bg-white/5"
+      <div class="mt-8 space-y-8">
+        <div class="space-y-4">
+          <h4 class="font-medium text-slate-200">TA access emails</h4>
+          <p class="text-sm text-slate-400">
+            People listed here get the TA view when they sign in. Built-in TA emails
+            cannot be removed.
+          </p>
+          <form
+            class="flex flex-col gap-2 sm:flex-row sm:items-end"
+            @submit.prevent="submitTaEmail"
+          >
+            <input
+              v-model.trim="taInput"
+              type="email"
+              class="input flex-1"
+              placeholder="Add TA @virginia.edu"
+            />
+            <button type="submit" class="button-primary shrink-0">Add TA email</button>
+          </form>
+          <p v-if="taFormError" class="text-sm text-red-400">{{ taFormError }}</p>
+          <p v-if="taFormOk" class="text-sm text-green-400">{{ taFormOk }}</p>
+          <div
+            class="overflow-hidden rounded-lg border border-white/10 bg-slate-900/50"
+          >
+            <table class="w-full text-left text-sm text-slate-300">
+              <thead
+                class="border-b border-white/10 bg-slate-800/50 text-xs uppercase text-slate-400"
               >
-                <td class="px-4 py-3">{{ email }}</td>
-                <td class="px-4 py-3">ta_professor</td>
-              </tr>
-            </tbody>
-          </table>
+                <tr>
+                  <th class="px-4 py-3">Email</th>
+                  <th class="px-4 py-3">Notes</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in taRows"
+                  :key="row.email"
+                  class="border-b border-white/5 hover:bg-white/5"
+                >
+                  <td class="px-4 py-3 font-medium text-white">{{ row.email }}</td>
+                  <td class="px-4 py-3 text-slate-400">
+                    {{ row.isDefault ? "Built-in TA" : "Added by professor" }}
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <button
+                      v-if="!row.isDefault"
+                      type="button"
+                      class="rounded bg-red-600/90 px-3 py-1 text-xs text-white"
+                      @click="removeTa(row.email)"
+                    >
+                      Remove
+                    </button>
+                    <span v-else class="text-xs text-slate-500">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-medium text-slate-200">Professor access emails</h4>
+          <p class="text-sm text-slate-400">
+            People listed here get the full professor view, including this dashboard.
+            Built-in professor emails cannot be removed.
+          </p>
+          <form
+            class="flex flex-col gap-2 sm:flex-row sm:items-end"
+            @submit.prevent="submitProfessorEmail"
+          >
+            <input
+              v-model.trim="professorInput"
+              type="email"
+              class="input flex-1"
+              placeholder="Add professor @virginia.edu"
+            />
+            <button type="submit" class="button-primary shrink-0">
+              Add professor email
+            </button>
+          </form>
+          <p v-if="professorFormError" class="text-sm text-red-400">
+            {{ professorFormError }}
+          </p>
+          <p v-if="professorFormOk" class="text-sm text-green-400">
+            {{ professorFormOk }}
+          </p>
+          <div
+            class="overflow-hidden rounded-lg border border-white/10 bg-slate-900/50"
+          >
+            <table class="w-full text-left text-sm text-slate-300">
+              <thead
+                class="border-b border-white/10 bg-slate-800/50 text-xs uppercase text-slate-400"
+              >
+                <tr>
+                  <th class="px-4 py-3">Email</th>
+                  <th class="px-4 py-3">Notes</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in professorRows"
+                  :key="row.email"
+                  class="border-b border-white/5 hover:bg-white/5"
+                >
+                  <td class="px-4 py-3 font-medium text-white">{{ row.email }}</td>
+                  <td class="px-4 py-3 text-slate-400">
+                    {{ row.isDefault ? "Built-in professor" : "Added by professor" }}
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <button
+                      v-if="!row.isDefault"
+                      type="button"
+                      class="rounded bg-red-600/90 px-3 py-1 text-xs text-white"
+                      @click="removeProfessor(row.email)"
+                    >
+                      Remove
+                    </button>
+                    <span v-else class="text-xs text-slate-500">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -217,6 +318,15 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { api } from "../lib/api";
+import {
+  listTaEmailsForDisplay,
+  listProfessorEmailsForDisplay,
+  addExtraTaEmail,
+  removeExtraTaEmail,
+  addExtraProfessorEmail,
+  removeExtraProfessorEmail,
+  notifyRoleRegistryUpdated,
+} from "../composables/useAuthProfile";
 
 const announcementForm = reactive({ title: "", body: "" });
 const isPosting = ref(false);
@@ -225,12 +335,72 @@ const postSuccess = ref(false);
 const analyticsData = ref([]);
 const activeSessions = ref(0);
 const studentStats = ref([]);
-const taRoleEmails = [
-  "khg5bj@virginia.edu",
-  "cdd9sb@virginia.edu",
-  "xfw9vp@virginia.edu",
-  "uhu5nr@virginia.edu",
-];
+
+const taInput = ref("");
+const professorInput = ref("");
+const taFormError = ref("");
+const taFormOk = ref("");
+const professorFormError = ref("");
+const professorFormOk = ref("");
+
+const taRows = ref(listTaEmailsForDisplay());
+const professorRows = ref(listProfessorEmailsForDisplay());
+
+function refreshRoleRows() {
+  taRows.value = listTaEmailsForDisplay();
+  professorRows.value = listProfessorEmailsForDisplay();
+  notifyRoleRegistryUpdated();
+}
+
+function submitTaEmail() {
+  taFormError.value = "";
+  taFormOk.value = "";
+  const r = addExtraTaEmail(taInput.value);
+  if (!r.ok) {
+    taFormError.value = r.message || "Could not add email.";
+    return;
+  }
+  taInput.value = "";
+  taFormOk.value = "TA email added.";
+  refreshRoleRows();
+}
+
+function removeTa(email) {
+  taFormError.value = "";
+  taFormOk.value = "";
+  const r = removeExtraTaEmail(email);
+  if (!r.ok) {
+    taFormError.value = r.message || "Could not remove.";
+    return;
+  }
+  taFormOk.value = "TA email removed.";
+  refreshRoleRows();
+}
+
+function submitProfessorEmail() {
+  professorFormError.value = "";
+  professorFormOk.value = "";
+  const r = addExtraProfessorEmail(professorInput.value);
+  if (!r.ok) {
+    professorFormError.value = r.message || "Could not add email.";
+    return;
+  }
+  professorInput.value = "";
+  professorFormOk.value = "Professor email added.";
+  refreshRoleRows();
+}
+
+function removeProfessor(email) {
+  professorFormError.value = "";
+  professorFormOk.value = "";
+  const r = removeExtraProfessorEmail(email);
+  if (!r.ok) {
+    professorFormError.value = r.message || "Could not remove.";
+    return;
+  }
+  professorFormOk.value = "Professor email removed.";
+  refreshRoleRows();
+}
 
 const fetchAnalytics = async () => {
   try {

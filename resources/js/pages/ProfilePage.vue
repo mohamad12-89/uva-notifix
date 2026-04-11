@@ -3,6 +3,12 @@
     <div
       class="card border-white/25 bg-gradient-to-br from-uva-blue/45 via-slate-900/65 to-uva-orange/15 p-7 shadow-[0_12px_30px_rgba(7,12,24,0.35)]"
     >
+      <p
+        v-if="roleGreeting"
+        class="mb-2 text-center text-sm font-medium text-uva-orange"
+      >
+        {{ roleGreeting }}
+      </p>
       <h2 class="mb-1 text-center text-3xl font-bold text-uva-orange">
         Profile Settings
       </h2>
@@ -70,7 +76,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import {
   refreshAuthProfile,
   signOutAuth,
@@ -78,7 +84,14 @@ import {
   useAuthProfile,
 } from "../composables/useAuthProfile";
 
-const { authProfile } = useAuthProfile();
+const { authProfile, isStudent, isTa, isProfessor } = useAuthProfile();
+
+const roleGreeting = computed(() => {
+  if (isProfessor.value) return "Hello, Professor — thanks for using Notifix.";
+  if (isTa.value) return "Hello, TA — thanks for supporting students on Notifix.";
+  if (isStudent.value) return "Hello, student — glad you are here.";
+  return "";
+});
 
 const error = ref("");
 const message = ref("");
