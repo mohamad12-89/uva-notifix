@@ -20,6 +20,8 @@ class AppointmentController extends Controller
             'help_needed' => 'required|string',
             'class' => 'required|string',
             'ta_selected' => 'required|string',
+            'preferred_date' => 'required|date_format:Y-m-d',
+            'preferred_time' => 'required|date_format:H:i',
             'comments' => 'nullable|string',
         ]);
 
@@ -46,6 +48,8 @@ class AppointmentController extends Controller
             'help_needed' => 'required|string',
             'class' => 'required|string',
             'ta_selected' => 'required|string',
+            'preferred_date' => 'required|date_format:Y-m-d',
+            'preferred_time' => 'required|date_format:H:i',
             'comments' => 'nullable|string',
         ]);
 

@@ -12,6 +12,8 @@ class Appointment extends Model
         'help_needed',
         'class',
         'ta_selected',
+        'preferred_date',
+        'preferred_time',
         'comments',
         'status',
     ];

@@ -21,6 +21,30 @@
           <option>William</option>
           <option>Avery Smith</option>
         </select>
+        <div class="space-y-1">
+          <label for="appt-pref-date" class="block text-xs font-medium text-slate-300">
+            Preferred date
+          </label>
+          <input
+            id="appt-pref-date"
+            v-model="form.preferred_date"
+            type="date"
+            required
+            class="input w-full"
+          />
+        </div>
+        <div class="space-y-1">
+          <label for="appt-pref-time" class="block text-xs font-medium text-slate-300">
+            Preferred time
+          </label>
+          <input
+            id="appt-pref-time"
+            v-model="form.preferred_time"
+            type="time"
+            required
+            class="input w-full"
+          />
+        </div>
         <textarea v-model="form.comments" class="input md:col-span-2" placeholder="Additional comments" />
         <button class="button-primary md:col-span-2" type="submit">
           {{ editingId ? "Update Appointment Request" : "Submit Appointment Request" }}
@@ -49,6 +73,13 @@
               </span>
             </div>
             <p class="text-sm text-slate-200">{{ appointment.reason }} | TA: {{ appointment.ta_selected }}</p>
+            <p
+              v-if="formatPreferredDisplay(appointment.preferred_date, appointment.preferred_time)"
+              class="text-sm font-medium text-uva-orange"
+            >
+              Preferred:
+              {{ formatPreferredDisplay(appointment.preferred_date, appointment.preferred_time) }}
+            </p>
             <p class="text-sm text-slate-300">{{ appointment.help_needed }}</p>
             <p v-if="appointment.comments" class="mt-1 text-sm text-slate-400">{{ appointment.comments }}</p>
             <div class="mt-3 flex gap-2">
@@ -106,6 +137,13 @@
             </div>
             <p class="text-sm text-slate-200">{{ appointment.reason }}</p>
             <p class="text-sm text-slate-300">TA selected: {{ appointment.ta_selected }}</p>
+            <p
+              v-if="formatPreferredDisplay(appointment.preferred_date, appointment.preferred_time)"
+              class="mt-1 text-sm font-medium text-uva-orange"
+            >
+              Student preferred slot:
+              {{ formatPreferredDisplay(appointment.preferred_date, appointment.preferred_time) }}
+            </p>
             <p class="mt-1 text-sm text-slate-300">{{ appointment.help_needed }}</p>
             <p v-if="appointment.comments" class="mt-1 text-sm text-slate-400">{{ appointment.comments }}</p>
             <div v-if="appointment.status === 'pending'" class="mt-4 flex flex-wrap gap-2">
@@ -148,6 +186,8 @@ const form = reactive({
   help_needed: "",
   class: "",
   ta_selected: "",
+  preferred_date: "",
+  preferred_time: "",
   comments: "",
 });
 
@@ -178,6 +218,55 @@ const statusBadgeClass = (s) => {
   return "bg-amber-500/20 text-amber-200";
 };
 
+/** Normalize API date to YYYY-MM-DD for <input type="date"> */
+function normalizeDateForInput(value) {
+  if (value == null || value === "") return "";
+  const s = String(value);
+  if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s;
+}
+
+/** Normalize API time to HH:mm for <input type="time"> */
+function normalizeTimeForInput(value) {
+  if (value == null || value === "") return "";
+  const s = String(value);
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (m) {
+    const h = m[1].padStart(2, "0");
+    return `${h}:${m[2]}`;
+  }
+  return s.slice(0, 5);
+}
+
+function formatPreferredDisplay(dateVal, timeVal) {
+  const dateStr = normalizeDateForInput(dateVal);
+  const timeStr = normalizeTimeForInput(timeVal);
+  if (!dateStr) return "";
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    return timeStr ? `${dateStr} at ${formatTimeLabel(timeStr)}` : dateStr;
+  }
+  const [y, mo, d] = parts;
+  const dt = new Date(y, mo - 1, d);
+  const datePart = dt.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  if (!timeStr) return datePart;
+  return `${datePart} at ${formatTimeLabel(timeStr)}`;
+}
+
+function formatTimeLabel(hhmm) {
+  const [h, m] = hhmm.split(":").map((x) => parseInt(x, 10));
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  const suffix = h < 12 ? "AM" : "PM";
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 const resetForm = () => {
   editingId.value = null;
   form.student_name = "";
@@ -185,6 +274,8 @@ const resetForm = () => {
   form.help_needed = "";
   form.class = "";
   form.ta_selected = "";
+  form.preferred_date = "";
+  form.preferred_time = "";
   form.comments = "";
 };
 
@@ -209,6 +300,8 @@ const startEdit = (appointment) => {
   form.help_needed = appointment.help_needed;
   form.class = appointment.class;
   form.ta_selected = appointment.ta_selected;
+  form.preferred_date = normalizeDateForInput(appointment.preferred_date);
+  form.preferred_time = normalizeTimeForInput(appointment.preferred_time);
   form.comments = appointment.comments ?? "";
 };
 
