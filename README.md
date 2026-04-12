@@ -84,14 +84,20 @@ DB_DATABASE=database/database.sqlite
 
 ### 3) Role mapping (hardcoded)
 
-TA/Professor emails are currently hardcoded in `resources/js/composables/useAuthProfile.js`:
+Defaults in `resources/js/composables/useAuthProfile.js`:
+
+**Professor** (Instructor Dashboard + staff tools):
+
+- `cdd9sb@virginia.edu`
+- `amm8km@virginia.edu`
+
+**TA** (staff tools, no Instructor Dashboard):
 
 - `khg5bj@virginia.edu`
-- `cdd9sb@virginia.edu`
 - `xfw9vp@virginia.edu`
 - `uhu5nr@virginia.edu`
 
-Any other `@virginia.edu` email is treated as `student`.
+Any other `@virginia.edu` email is treated as `student`. Professors can add more TA or professor emails from the dashboard (stored in the browser).
 
 ### 4) Start app
 
@@ -107,7 +113,7 @@ Open:
 
 - `npm run build` completes without errors
 - Signup opens verification modal and allows continue flow
-- TA account can access `/instructor-dashboard`
+- Professor account can access `/instructor-dashboard`; TA account cannot
 - Student account cannot access `/instructor-dashboard`
 
 ## Frontend auth code locations
@@ -126,7 +132,7 @@ Open:
   - `initializeAuth()`
   - `refreshAuthProfile()`
   - hardcoded role mapping by email
-  - computed role flags: `isStudent`, `isTaProfessor`
+  - computed role flags: `isStudent`, `isTa`, `isProfessor`, `isStaff`
 
 ### Route protection
 
@@ -137,11 +143,14 @@ Open:
 
 ## Role-based behavior summary
 
-- `ta_professor`:
-  - can access Instructor Dashboard
-  - can access TA-only actions in relevant pages
+- `professor`:
+  - can access Instructor Dashboard (and email management)
+  - same staff tools as TA on other pages
+- `ta`:
+  - no Instructor Dashboard
+  - staff actions (office hours, announcements, check-in, etc.)
 - `student`:
-  - no Instructor Dashboard access
+  - no Instructor Dashboard
   - student-only actions remain available
 
 ## API endpoints (Laravel)

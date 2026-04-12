@@ -78,13 +78,14 @@ using (
   )
 );
 
--- Seed initial professor and TA allowlist
+-- Seed initial professor and TA allowlist (align with useAuthProfile.js defaults)
 insert into public.roles (email, role)
 values
   ('cdd9sb@virginia.edu', 'professor'),
+  ('amm8km@virginia.edu', 'professor'),
+  ('khg5bj@virginia.edu', 'ta'),
   ('xfw9vp@virginia.edu', 'ta'),
   ('uhu5nr@virginia.edu', 'ta'),
-  ('khg5bj@virginia.edu', 'student'),
   ('studenttest@virginia.edu', 'student')
 on conflict (email) do update
 set role = excluded.role;

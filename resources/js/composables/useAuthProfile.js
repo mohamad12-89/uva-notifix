@@ -7,13 +7,15 @@ const LS_EXTRA_PROFESSOR = "notifix_extra_professor_emails";
 /** Built-in TA accounts (cannot be removed from dashboard). */
 export const DEFAULT_TA_EMAILS = [
   "khg5bj@virginia.edu",
-  "cdd9sb@virginia.edu",
   "xfw9vp@virginia.edu",
   "uhu5nr@virginia.edu",
 ];
 
-/** Built-in professor account (cannot be removed from dashboard). */
-export const DEFAULT_PROFESSOR_EMAILS = ["amm8km@virginia.edu"];
+/** Built-in professor accounts (cannot be removed from dashboard). */
+export const DEFAULT_PROFESSOR_EMAILS = [
+  "cdd9sb@virginia.edu",
+  "amm8km@virginia.edu",
+];
 
 const authProfile = ref(null);
 const authReady = ref(false);
