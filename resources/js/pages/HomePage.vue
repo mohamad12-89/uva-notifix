@@ -35,33 +35,60 @@
             v-for="slot in weekOfficeHours"
             :key="slot.id"
             class="flex flex-col justify-between gap-3 rounded-xl border border-white/20 bg-white/5 p-4 sm:flex-row sm:items-center"
+            :class="
+              isStaff
+                ? 'cursor-pointer transition-colors hover:border-uva-orange/45'
+                : ''
+            "
+            @click="isStaff ? openSessionModal(slot) : null"
           >
             <div>
               <p class="font-semibold text-white">{{ slot.ta_name }}</p>
               <p class="text-sm text-slate-200">
-                {{ formatDate(slot.date) }} at {{ formatTime(slot.time) }}
+                {{ formatDate(slot.date) }} · {{ formatTimeRangeFromSlot(slot) }}
               </p>
               <p class="text-sm text-slate-200">{{ slot.location }}</p>
               <p class="mt-1 text-sm font-medium text-uva-orange">
                 Attending: {{ slot.attendance_count }}
               </p>
             </div>
-            <button
-              v-if="isStudent"
-              class="button-primary transition-all duration-200"
-              :class="{
-                '!bg-slate-600 hover:!bg-slate-500': joinedSessions.includes(
-                  slot.id,
-                ),
-              }"
-              @click="toggleJoin(slot.id)"
+            <div v-if="isStudent" class="flex shrink-0" @click.stop>
+              <button
+                class="button-primary transition-all duration-200"
+                :class="{
+                  '!bg-slate-600 hover:!bg-slate-500': joinedSessions.includes(
+                    slot.id,
+                  ),
+                }"
+                @click="toggleJoin(slot.id)"
+              >
+                {{
+                  joinedSessions.includes(slot.id)
+                    ? "Unjoin"
+                    : "Join Office Hours"
+                }}
+              </button>
+            </div>
+            <div
+              v-else-if="isStaff"
+              class="flex shrink-0 flex-wrap gap-2"
+              @click.stop
             >
-              {{
-                joinedSessions.includes(slot.id)
-                  ? "Unjoin"
-                  : "Join Office Hours"
-              }}
-            </button>
+              <button
+                type="button"
+                class="rounded-lg bg-slate-600 px-4 py-2 text-sm font-medium text-white hover:bg-slate-500"
+                @click="goEditOnOfficeHoursPage(slot)"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500"
+                @click="deleteOfficeHour(slot.id)"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
         <p v-else class="text-slate-300">
@@ -83,23 +110,44 @@
               v-for="slot in day.slots"
               :key="slot.id"
               class="rounded-lg border border-white/20 bg-white/5 p-2 text-xs text-slate-100"
+              :class="
+                isStaff ? 'cursor-pointer hover:border-uva-orange/50' : ''
+              "
+              @click="isStaff ? openSessionModal(slot) : null"
             >
               <p class="font-semibold">{{ slot.ta_name }}</p>
-              <p>{{ formatTime(slot.time) }} - {{ slot.location }}</p>
+              <p>{{ formatTimeRangeFromSlot(slot) }} · {{ slot.location }}</p>
               <p class="text-uva-orange">
                 Attendees: {{ slot.attendance_count }}
               </p>
-              <button
-                class="mt-2 w-full rounded px-2 py-1 text-white transition-all duration-200"
-                :class="
-                  joinedSessions.includes(slot.id)
-                    ? 'bg-slate-600 hover:bg-slate-500'
-                    : 'bg-uva-orange hover:bg-orange-600'
-                "
-                @click="toggleJoin(slot.id)"
-              >
-                {{ joinedSessions.includes(slot.id) ? "Unjoin" : "Join" }}
-              </button>
+              <div class="mt-2 flex flex-wrap gap-1">
+                <button
+                  v-if="isStudent"
+                  class="flex-auto rounded px-1 py-1 text-center text-white transition-all duration-200"
+                  :class="
+                    joinedSessions.includes(slot.id)
+                      ? 'bg-slate-600 hover:bg-slate-500'
+                      : 'bg-uva-orange hover:bg-orange-600'
+                  "
+                  @click.stop="toggleJoin(slot.id)"
+                >
+                  {{ joinedSessions.includes(slot.id) ? "Unjoin" : "Join" }}
+                </button>
+                <button
+                  v-if="isStaff"
+                  class="flex-auto rounded bg-slate-600 px-1 py-1 text-center text-white"
+                  @click.stop="goEditOnOfficeHoursPage(slot)"
+                >
+                  Edit
+                </button>
+                <button
+                  v-if="isStaff"
+                  class="flex-auto rounded bg-red-600 px-2 py-1 text-center text-white"
+                  @click.stop="deleteOfficeHour(slot.id)"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
             <p v-if="!day.slots.length" class="text-xs text-slate-400">
               No office hours
@@ -140,11 +188,99 @@
         </div>
       </Transition>
     </div>
+
+    <div
+      v-if="isStaff && sessionModalOpen && selectedSlot"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+      @click.self="closeSessionModal"
+    >
+      <div class="card w-full max-w-2xl p-5">
+        <div class="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-xl font-semibold text-uva-orange">
+              Office Hour Details
+            </h3>
+            <p class="text-sm text-slate-200">{{ selectedSlot.ta_name }}</p>
+            <p class="text-sm text-slate-300">
+              {{ selectedSlot.date }} · {{ formatTimeRangeFromSlot(selectedSlot) }}
+            </p>
+            <p class="text-sm text-slate-300">{{ selectedSlot.location }}</p>
+            <p class="mt-1 text-sm font-medium text-uva-orange">
+              Attendees: {{ selectedSlot.attendance_count }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded border border-white/20 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
+            @click="closeSessionModal"
+          >
+            Close
+          </button>
+        </div>
+
+        <div class="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="rounded bg-slate-600 px-3 py-1.5 text-sm text-white"
+            @click="quickEditFromModal"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            class="rounded bg-red-600 px-3 py-1.5 text-sm text-white"
+            @click="quickDeleteFromModal"
+          >
+            Delete
+          </button>
+        </div>
+
+        <div class="rounded-md border border-white/15 bg-slate-900/40 p-3">
+          <p
+            class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300"
+          >
+            Students visiting
+          </p>
+          <p v-if="loadingSignups" class="text-xs text-slate-400">
+            Loading students...
+          </p>
+          <div v-else-if="modalSignups.length" class="space-y-2">
+            <div
+              v-for="signup in modalSignups"
+              :key="signup.id"
+              class="flex items-center justify-between gap-2 rounded border border-white/10 bg-white/5 p-2"
+            >
+              <div>
+                <p class="text-sm font-medium text-slate-100">
+                  {{ signup.student_name }}
+                </p>
+                <p class="text-xs text-slate-400">{{ signup.student_email }}</p>
+              </div>
+              <button
+                v-if="!signup.checked_in_at"
+                class="rounded bg-uva-orange px-2 py-1 text-xs font-semibold text-white hover:bg-uva-orange/90"
+                @click="checkInStudent(selectedSlot, signup)"
+              >
+                Check In
+              </button>
+              <span
+                v-else
+                class="rounded bg-green-500/25 px-2 py-1 text-xs font-semibold text-green-300"
+              >
+                Checked In
+              </span>
+            </div>
+          </div>
+          <p v-else class="text-xs text-slate-400">No students signed up yet.</p>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup>
 import { onMounted, ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import { api } from "../lib/api";
 import {
   officeHours,
@@ -152,10 +288,17 @@ import {
   fetchOfficeHours,
   pushJoinedSession,
   removeJoinedSession,
+  removeOfficeHourFromStore,
 } from "../composables/useOfficeHours";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { isStudent, authProfile } = useAuthProfile();
+const router = useRouter();
+const { isStudent, isStaff, authProfile } = useAuthProfile();
+
+const sessionModalOpen = ref(false);
+const selectedSlot = ref(null);
+const modalSignups = ref([]);
+const loadingSignups = ref(false);
 
 const aboutOpen = ref(false);
 const isCalendarView = ref(false);
@@ -224,6 +367,115 @@ const weekDays = computed(() => {
   return days;
 });
 
+const formatTimeRange = (startTime, endTime) => {
+  const [hh, mm] = startTime.slice(0, 5).split(":").map(Number);
+  const start = new Date(2000, 0, 1, hh, mm, 0, 0);
+  const [eh, em] = endTime.slice(0, 5).split(":").map(Number);
+  const end = new Date(2000, 0, 1, eh, em, 0, 0);
+  const fmt = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${fmt.format(start)} – ${fmt.format(end)}`;
+};
+
+const guessEndTime = (startTime, durationMinutes = 60) => {
+  const [hh, mm] = startTime.slice(0, 5).split(":").map(Number);
+  const start = new Date(2000, 0, 1, hh, mm, 0, 0);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+  const h = String(end.getHours()).padStart(2, "0");
+  const m = String(end.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+};
+
+const formatTimeRangeFromSlot = (slot) => {
+  const end =
+    slot.end_time ?? guessEndTime(slot.time, slot.duration_minutes ?? 60);
+  return formatTimeRange(slot.time, end);
+};
+
+function goEditOnOfficeHoursPage(slot) {
+  router.push({
+    path: "/office-hours",
+    query: { edit: String(slot.id) },
+  });
+}
+
+async function deleteOfficeHour(id, { skipConfirm = false } = {}) {
+  if (!isStaff.value) return;
+  if (
+    !skipConfirm &&
+    !confirm("Delete this office hour? This cannot be undone.")
+  ) {
+    return;
+  }
+  try {
+    await api.delete(`/office-hours/${id}`);
+    removeOfficeHourFromStore(id);
+    if (selectedSlot.value?.id === id) closeSessionModal();
+    await fetchOfficeHours();
+  } catch (e) {
+    console.error("Failed to delete office hour:", e);
+    await fetchOfficeHours();
+  }
+}
+
+const loadSignupsForSlot = async (slotId) => {
+  loadingSignups.value = true;
+  try {
+    const { data } = await api.get(`/office-hours/${slotId}/signups`);
+    modalSignups.value = data.signups || [];
+  } catch (e) {
+    console.error("Failed to load student signups:", e);
+    modalSignups.value = [];
+  } finally {
+    loadingSignups.value = false;
+  }
+};
+
+const openSessionModal = async (slot) => {
+  selectedSlot.value = slot;
+  sessionModalOpen.value = true;
+  await loadSignupsForSlot(slot.id);
+};
+
+const closeSessionModal = () => {
+  sessionModalOpen.value = false;
+  selectedSlot.value = null;
+  modalSignups.value = [];
+};
+
+const quickEditFromModal = () => {
+  if (!selectedSlot.value) return;
+  const slot = selectedSlot.value;
+  closeSessionModal();
+  goEditOnOfficeHoursPage(slot);
+};
+
+const quickDeleteFromModal = async () => {
+  if (!selectedSlot.value) return;
+  if (!confirm("Delete this office hour?")) return;
+  const id = selectedSlot.value.id;
+  closeSessionModal();
+  await deleteOfficeHour(id, { skipConfirm: true });
+};
+
+const checkInStudent = async (slot, signup) => {
+  try {
+    await api.post(`/office-hours/${slot.id}/signups/${signup.id}/check-in`);
+    await loadSignupsForSlot(slot.id);
+    if (selectedSlot.value?.id === slot.id) {
+      selectedSlot.value = {
+        ...selectedSlot.value,
+        attendance_count: modalSignups.value.length,
+      };
+    }
+    await fetchOfficeHours();
+  } catch (e) {
+    console.error("Failed to check in student:", e);
+  }
+};
+
 const toggleJoin = async (id) => {
   const isJoined = joinedSessions.value.includes(id);
   const profile = authProfile.value;
@@ -252,7 +504,6 @@ const toggleJoin = async (id) => {
 
 const formatDate = (value) =>
   new Date(`${value}T00:00:00`).toLocaleDateString();
-const formatTime = (value) => value.slice(0, 5);
 
 onMounted(fetchOfficeHours);
 </script>

@@ -352,6 +352,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../lib/api";
 import {
   officeHours,
@@ -364,6 +365,9 @@ import {
 import { useAuthProfile } from "../composables/useAuthProfile";
 
 const { isTaProfessor, isStudent, authProfile } = useAuthProfile();
+
+const route = useRoute();
+const router = useRouter();
 
 const showForm = ref(false);
 const editingId = ref(null);
@@ -709,5 +713,25 @@ const calendarWeeks = computed(() => {
   }));
 });
 
-onMounted(fetchOfficeHours);
+async function openEditFromQueryIfPresent() {
+  const idParam = route.query.edit;
+  if (idParam == null || idParam === "") return;
+  const idStr = String(idParam);
+  const slot = officeHours.value.find((s) => String(s.id) === idStr);
+  if (slot) {
+    startEdit(slot);
+    showForm.value = true;
+    await nextTick();
+    const formEl = document.getElementById("office-hour-ta-name");
+    if (formEl) formEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  const nextQuery = { ...route.query };
+  delete nextQuery.edit;
+  router.replace({ path: route.path, query: nextQuery });
+}
+
+onMounted(async () => {
+  await fetchOfficeHours();
+  await openEditFromQueryIfPresent();
+});
 </script>
