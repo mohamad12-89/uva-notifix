@@ -12,14 +12,6 @@
           <option disabled value="">Select class</option>
           <option>ENGR 1010</option>
           <option>ENGR 1020</option>
-          <option>ENGR 1624</option>
-          <option>ENGR 2595</option>
-        </select>
-        <select v-model="form.ta_selected" required class="input">
-          <option disabled value="">Select TA</option>
-          <option>FEDE</option>
-          <option>William</option>
-          <option>Avery Smith</option>
         </select>
         <div class="space-y-1">
           <label for="appt-pref-date" class="block text-xs font-medium text-slate-300">
@@ -72,7 +64,11 @@
                 {{ formatStatus(appointment.status) }}
               </span>
             </div>
-            <p class="text-sm text-slate-200">{{ appointment.reason }} | TA: {{ appointment.ta_selected }}</p>
+            <p class="text-sm text-slate-200">{{ appointment.reason }}</p>
+            <p class="text-sm text-slate-300">
+              Assigned staff:
+              {{ appointment.assigned_to_name || "Pending assignment" }}
+            </p>
             <p
               v-if="formatPreferredDisplay(appointment.preferred_date, appointment.preferred_time)"
               class="text-sm font-medium text-uva-orange"
@@ -83,9 +79,19 @@
             <p class="text-sm text-slate-300">{{ appointment.help_needed }}</p>
             <p v-if="appointment.comments" class="mt-1 text-sm text-slate-400">{{ appointment.comments }}</p>
             <div class="mt-3 flex gap-2">
-              <button class="rounded bg-slate-700 px-3 py-1 text-sm text-white" @click="startEdit(appointment)">
+              <button
+                v-if="appointment.status !== 'accepted'"
+                class="rounded bg-slate-700 px-3 py-1 text-sm text-white"
+                @click="startEdit(appointment)"
+              >
                 Edit
               </button>
+              <span
+                v-else
+                class="rounded bg-slate-700/40 px-3 py-1 text-sm text-slate-300"
+              >
+                Accepted requests cannot be edited
+              </span>
               <button class="rounded bg-red-600 px-3 py-1 text-sm text-white" @click="remove(appointment.id)">
                 Delete
               </button>
@@ -136,7 +142,10 @@
               </span>
             </div>
             <p class="text-sm text-slate-200">{{ appointment.reason }}</p>
-            <p class="text-sm text-slate-300">TA selected: {{ appointment.ta_selected }}</p>
+            <p class="text-sm text-slate-300">
+              Assigned staff:
+              {{ appointment.assigned_to_name || "Pending assignment" }}
+            </p>
             <p
               v-if="formatPreferredDisplay(appointment.preferred_date, appointment.preferred_time)"
               class="mt-1 text-sm font-medium text-uva-orange"
@@ -175,7 +184,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { api } from "../lib/api";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { isStudent, isTaProfessor } = useAuthProfile();
+const { isStudent, isTaProfessor, authProfile, isProfessor } = useAuthProfile();
 
 const appointments = ref([]);
 const confirmation = ref("");
@@ -185,7 +194,6 @@ const form = reactive({
   reason: "",
   help_needed: "",
   class: "",
-  ta_selected: "",
   preferred_date: "",
   preferred_time: "",
   comments: "",
@@ -273,7 +281,6 @@ const resetForm = () => {
   form.reason = "";
   form.help_needed = "";
   form.class = "";
-  form.ta_selected = "";
   form.preferred_date = "";
   form.preferred_time = "";
   form.comments = "";
@@ -294,12 +301,12 @@ const submit = async () => {
 
 const startEdit = (appointment) => {
   if (!isStudent.value) return;
+  if ((appointment.status || "pending") === "accepted") return;
   editingId.value = appointment.id;
   form.student_name = appointment.student_name;
   form.reason = appointment.reason;
   form.help_needed = appointment.help_needed;
   form.class = appointment.class;
-  form.ta_selected = appointment.ta_selected;
   form.preferred_date = normalizeDateForInput(appointment.preferred_date);
   form.preferred_time = normalizeTimeForInput(appointment.preferred_time);
   form.comments = appointment.comments ?? "";
@@ -318,7 +325,17 @@ const remove = async (id) => {
 const setAppointmentStatus = async (appointment, status) => {
   if (!isTaProfessor.value) return;
   try {
-    await api.put(`/appointments/${appointment.id}`, { status });
+    const first = (authProfile.value?.firstName || "").trim();
+    const last = (authProfile.value?.lastName || "").trim();
+    const fallbackName = authProfile.value?.email || "Staff";
+    const assignedName = `${first} ${last}`.trim() || fallbackName;
+    const payload = { status };
+    if (status === "accepted") {
+      payload.assigned_to_name = assignedName;
+      payload.assigned_to_email = authProfile.value?.email || null;
+      payload.assigned_to_role = isProfessor.value ? "professor" : "ta";
+    }
+    await api.put(`/appointments/${appointment.id}`, payload);
     appointment.status = status;
     await load();
   } catch (e) {
