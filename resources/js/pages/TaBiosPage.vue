@@ -2,11 +2,7 @@
   <section class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-3xl font-bold text-uva-orange">TA Bios</h2>
-      <button
-        v-if="canAddBio"
-        class="button-secondary"
-        @click="showForm = !showForm"
-      >
+      <button v-if="canAddBio" class="button-secondary" @click="openForm">
         Add Your Bio
       </button>
     </div>
@@ -19,7 +15,13 @@
       <input v-model="form.name" required class="input" placeholder="Name" />
       <input v-model="form.year" required class="input" placeholder="Year" />
       <input v-model="form.major" required class="input" placeholder="Major" />
-      <input v-model="form.email" required class="input" placeholder="Email" />
+      <input
+        v-model="form.email"
+        required
+        class="input disabled:opacity-50 disabled:cursor-not-allowed"
+        placeholder="Email"
+        disabled
+      />
       <textarea
         v-model="form.notes"
         class="input md:col-span-2"
@@ -44,7 +46,10 @@
             <p class="mt-1 text-slate-300">{{ bio.notes }}</p>
           </div>
         </div>
-        <div v-if="isTaProfessor" class="mt-3 flex gap-2">
+        <div
+          v-if="isProfessor || bio.email === authProfile?.email"
+          class="mt-3 flex gap-2"
+        >
           <button
             class="rounded bg-slate-700 px-3 py-1 text-sm text-white"
             @click="startEdit(bio)"
@@ -68,7 +73,7 @@ import { onMounted, reactive, ref, computed } from "vue";
 import { api } from "../lib/api";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { isTaProfessor, authProfile } = useAuthProfile();
+const { isTaProfessor, authProfile, isProfessor } = useAuthProfile();
 
 const showForm = ref(false);
 const editingId = ref(null);
@@ -89,21 +94,37 @@ const load = async () => {
   bios.value = response.data;
 };
 
+const openForm = () => {
+  resetForm();
+  showForm.value = true;
+};
+
 const resetForm = () => {
   form.name = "";
   form.year = "";
   form.major = "";
-  form.email = "";
+  form.email = authProfile.value?.email || "";
   form.notes = "";
   editingId.value = null;
 };
 
 const submit = async () => {
-  if (!isTaProfessor.value) return;
   const payload = { ...form };
   if (editingId.value) {
+    const bioToUpdate = bios.value.find((b) => b.id === editingId.value);
+    if (
+      !bioToUpdate ||
+      (!isProfessor.value && bioToUpdate.email !== authProfile.value?.email)
+    ) {
+      console.error("Permission denied to update this bio.");
+      return;
+    }
     await api.put(`/ta-bios/${editingId.value}`, payload);
   } else {
+    if (!canAddBio.value) {
+      console.error("Permission denied to create a bio.");
+      return;
+    }
     await api.post("/ta-bios", payload);
   }
   resetForm();
@@ -112,7 +133,10 @@ const submit = async () => {
 };
 
 const startEdit = (bio) => {
-  if (!isTaProfessor.value) return;
+  if (!isProfessor.value && bio.email !== authProfile.value?.email) {
+    console.error("Permission denied to edit this bio.");
+    return;
+  }
   showForm.value = true;
   editingId.value = bio.id;
   form.name = bio.name;
@@ -123,7 +147,14 @@ const startEdit = (bio) => {
 };
 
 const remove = async (id) => {
-  if (!isTaProfessor.value) return;
+  const bioToRemove = bios.value.find((b) => b.id === id);
+  if (
+    !bioToRemove ||
+    (!isProfessor.value && bioToRemove.email !== authProfile.value?.email)
+  ) {
+    console.error("Permission denied to delete this bio.");
+    return;
+  }
   await api.delete(`/ta-bios/${id}`);
   await load();
 };
