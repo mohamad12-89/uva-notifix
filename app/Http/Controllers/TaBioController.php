@@ -22,6 +22,11 @@ class TaBioController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $existingBio = TaBio::where('email', $data['email'])->first();
+        if ($existingBio) {
+            return response()->json(['message' => 'You already have a TA bio.'], 403);
+        }
+
         return TaBio::create($data);
     }
 
