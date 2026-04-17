@@ -55,11 +55,7 @@
         </div>
       </div>
 
-      <button
-        v-if="isTaProfessor"
-        class="button-secondary"
-        @click="showForm = !showForm"
-      >
+      <button v-if="isTaProfessor" class="button-secondary" @click="openForm">
         Add Office Hours
       </button>
     </div>
@@ -71,106 +67,128 @@
       Office hour successfully saved!
     </div>
 
-    <form
+    <div
       v-if="showForm && isTaProfessor"
-      class="card space-y-4 p-5"
-      @submit.prevent="submitForm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      @click.self="closeForm"
     >
-      <div
-        v-if="errorMessage"
-        class="rounded-md border border-red-500/30 bg-red-500/20 p-3 text-sm text-red-400"
-      >
-        {{ errorMessage }}
-      </div>
+      <div class="card w-full max-w-lg p-6 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-xl font-bold text-uva-orange">
+            {{ editingId ? "Edit Office Hours" : "Add Office Hours" }}
+          </h3>
+          <button
+            type="button"
+            class="text-slate-400 hover:text-white"
+            @click="closeForm"
+          >
+            ✕
+          </button>
+        </div>
 
-      <div class="grid gap-3 md:grid-cols-2">
-        <div class="space-y-1 w-full">
-          <label
-            for="office-hour-ta-name"
-            class="text-sm font-medium text-slate-200"
+        <form @submit.prevent="submitForm" class="space-y-4">
+          <div
+            v-if="errorMessage"
+            class="rounded-md border border-red-500/30 bg-red-500/20 p-3 text-sm text-red-400"
           >
-            TA Name
-          </label>
-          <input
-            id="office-hour-ta-name"
-            v-model="form.ta_name"
-            required
-            class="input w-full min-w-0"
-            placeholder="TA name"
-          />
-        </div>
-        <div class="space-y-1 w-full">
-          <label
-            for="office-hour-location"
-            class="text-sm font-medium text-slate-200"
-          >
-            Location
-          </label>
-          <input
-            id="office-hour-location"
-            v-model="form.location"
-            required
-            class="input w-full min-w-0"
-            placeholder="Location"
-          />
-        </div>
-      </div>
+            {{ errorMessage }}
+          </div>
 
-      <div class="grid gap-3 md:grid-cols-3">
-        <div class="space-y-1 w-full">
-          <label
-            for="office-hour-date"
-            class="text-sm font-medium text-slate-200"
-          >
-            Date
-          </label>
-          <input
-            id="office-hour-date"
-            v-model="form.date"
-            required
-            class="input w-full min-w-0"
-            type="date"
-          />
-        </div>
-        <div class="space-y-1 w-full">
-          <label
-            for="office-hour-start-time"
-            class="text-sm font-medium text-slate-200"
-          >
-            Start Time
-          </label>
-          <input
-            id="office-hour-start-time"
-            v-model="form.time"
-            required
-            class="input w-full min-w-0"
-            type="time"
-          />
-        </div>
-        <div class="space-y-1 w-full">
-          <label
-            for="office-hour-end-time"
-            class="text-sm font-medium text-slate-200"
-          >
-            End Time
-          </label>
-          <input
-            id="office-hour-end-time"
-            v-model="form.end_time"
-            required
-            class="input w-full min-w-0"
-            type="time"
-          />
-        </div>
-      </div>
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="space-y-1 w-full">
+              <label
+                for="office-hour-ta-name"
+                class="text-sm font-medium text-slate-200"
+              >
+                TA Name
+              </label>
+              <input
+                id="office-hour-ta-name"
+                v-model="form.ta_name"
+                required
+                class="input w-full min-w-0"
+                placeholder="TA name"
+              />
+            </div>
+            <div class="space-y-1 w-full">
+              <label
+                for="office-hour-location"
+                class="text-sm font-medium text-slate-200"
+              >
+                Location
+              </label>
+              <input
+                id="office-hour-location"
+                v-model="form.location"
+                required
+                class="input w-full min-w-0"
+                placeholder="Location"
+              />
+            </div>
+          </div>
 
-      <button class="button-primary w-full" type="submit">
-        Save Office Hour
-      </button>
-    </form>
+          <div class="grid gap-3 md:grid-cols-3">
+            <div class="space-y-1 w-full">
+              <label
+                for="office-hour-date"
+                class="text-sm font-medium text-slate-200"
+              >
+                Date
+              </label>
+              <input
+                id="office-hour-date"
+                v-model="form.date"
+                required
+                class="input w-full min-w-0"
+                type="date"
+              />
+            </div>
+            <div class="space-y-1 w-full">
+              <label
+                for="office-hour-start-time"
+                class="text-sm font-medium text-slate-200"
+              >
+                Start Time
+              </label>
+              <input
+                id="office-hour-start-time"
+                v-model="form.time"
+                required
+                class="input w-full min-w-0"
+                type="time"
+              />
+            </div>
+            <div class="space-y-1 w-full">
+              <label
+                for="office-hour-end-time"
+                class="text-sm font-medium text-slate-200"
+              >
+                End Time
+              </label>
+              <input
+                id="office-hour-end-time"
+                v-model="form.end_time"
+                required
+                class="input w-full min-w-0"
+                type="time"
+              />
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end gap-3 pt-2">
+            <button type="button" class="button-secondary" @click="closeForm">
+              Cancel
+            </button>
+            <button class="button-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="space-y-3">
-      <div class="flex items-center justify-between rounded-xl border border-white/20 bg-white/5 p-3">
+      <div
+        class="flex items-center justify-between rounded-xl border border-white/20 bg-white/5 p-3"
+      >
         <button
           type="button"
           class="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
@@ -209,7 +227,9 @@
             :key="day.key"
             :id="day.inMonth ? `day-${day.key}` : undefined"
             class="min-h-36 rounded-xl border border-white/20 bg-white/10 p-3 shadow-sm transition"
-            :class="day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'"
+            :class="
+              day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'
+            "
           >
             <p
               v-if="day.inMonth"
@@ -224,7 +244,11 @@
                 v-for="slot in day.slots"
                 :key="slot.id"
                 class="rounded-lg border border-white/20 bg-white/5 p-2 text-xs text-slate-100"
-                :class="isTaProfessor ? 'cursor-pointer hover:border-uva-orange/50' : ''"
+                :class="
+                  isTaProfessor
+                    ? 'cursor-pointer hover:border-uva-orange/50'
+                    : ''
+                "
                 @click="isTaProfessor ? openSessionModal(slot) : null"
               >
                 <p class="font-semibold">{{ slot.ta_name }}</p>
@@ -279,10 +303,13 @@
       <div class="card w-full max-w-2xl p-5">
         <div class="mb-3 flex items-start justify-between gap-3">
           <div>
-            <h3 class="text-xl font-semibold text-uva-orange">Office Hour Details</h3>
+            <h3 class="text-xl font-semibold text-uva-orange">
+              Office Hour Details
+            </h3>
             <p class="text-sm text-slate-200">{{ selectedSlot.ta_name }}</p>
             <p class="text-sm text-slate-300">
-              {{ selectedSlot.date }} · {{ formatTimeRangeFromSlot(selectedSlot) }}
+              {{ selectedSlot.date }} ·
+              {{ formatTimeRangeFromSlot(selectedSlot) }}
             </p>
             <p class="text-sm text-slate-300">{{ selectedSlot.location }}</p>
             <p class="mt-1 text-sm font-medium text-uva-orange">
@@ -314,10 +341,14 @@
         </div>
 
         <div class="rounded-md border border-white/15 bg-slate-900/40 p-3">
-          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
+          <p
+            class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300"
+          >
             Students visiting
           </p>
-          <p v-if="loadingSignups" class="text-xs text-slate-400">Loading students...</p>
+          <p v-if="loadingSignups" class="text-xs text-slate-400">
+            Loading students...
+          </p>
           <div v-else-if="modalSignups.length" class="space-y-2">
             <div
               v-for="signup in modalSignups"
@@ -325,7 +356,9 @@
               class="flex items-center justify-between gap-2 rounded border border-white/10 bg-white/5 p-2"
             >
               <div>
-                <p class="text-sm font-medium text-slate-100">{{ signup.student_name }}</p>
+                <p class="text-sm font-medium text-slate-100">
+                  {{ signup.student_name }}
+                </p>
                 <p class="text-xs text-slate-400">{{ signup.student_email }}</p>
               </div>
               <button
@@ -343,7 +376,9 @@
               </span>
             </div>
           </div>
-          <p v-else class="text-xs text-slate-400">No students signed up yet.</p>
+          <p v-else class="text-xs text-slate-400">
+            No students signed up yet.
+          </p>
         </div>
       </div>
     </div>
@@ -390,6 +425,22 @@ const sessionModalOpen = ref(false);
 const selectedSlot = ref(null);
 const modalSignups = ref([]);
 const loadingSignups = ref(false);
+
+const openForm = () => {
+  resetForm();
+  if (authProfile.value) {
+    const profile = authProfile.value;
+    const fullName =
+      `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
+    if (fullName) form.ta_name = fullName;
+  }
+  showForm.value = true;
+};
+
+const closeForm = () => {
+  showForm.value = false;
+  resetForm();
+};
 
 const resetForm = () => {
   form.ta_name = "";
@@ -468,7 +519,9 @@ const toggleJoin = async (id) => {
       removeJoinedSession(id);
     } else {
       await api.post(`/office-hours/${id}/join`, {
-        student_name: `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() || profile?.email,
+        student_name:
+          `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() ||
+          profile?.email,
         student_email: profile?.email,
       });
       pushJoinedSession(id);
@@ -720,10 +773,9 @@ async function openEditFromQueryIfPresent() {
   const slot = officeHours.value.find((s) => String(s.id) === idStr);
   if (slot) {
     startEdit(slot);
-    showForm.value = true;
     await nextTick();
     const formEl = document.getElementById("office-hour-ta-name");
-    if (formEl) formEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (formEl) formEl.focus();
   }
   const nextQuery = { ...route.query };
   delete nextQuery.edit;
