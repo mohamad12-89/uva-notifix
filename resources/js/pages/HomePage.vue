@@ -1,5 +1,66 @@
 <template>
   <section class="flex min-h-[calc(100vh-9rem)] flex-col gap-8">
+    <!-- Support: Moved to the top -->
+    <div class="mx-auto flex w-full max-w-2xl flex-col items-center gap-4">
+      <button
+        class="group w-fit rounded-full border border-uva-orange/40 bg-gradient-to-r from-uva-blue/30 to-uva-orange/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-uva-orange shadow-[0_0_0_rgba(248,76,30,0)] backdrop-blur-md transition-all duration-500 hover:-translate-y-0.5 hover:border-uva-orange/70 hover:shadow-[0_0_20px_rgba(248,76,30,0.45)]"
+        type="button"
+        @click="toggleSupport"
+      >
+        <span class="transition-colors duration-300 group-hover:text-white"
+          >Support</span
+        >
+      </button>
+
+      <Transition
+        enter-active-class="transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        enter-from-class="translate-y-[-18px] scale-95 opacity-0 blur-[2px]"
+        enter-to-class="translate-y-0 scale-100 opacity-100 blur-0"
+        leave-active-class="transition-all duration-350 ease-in"
+        leave-from-class="translate-y-0 scale-100 opacity-100"
+        leave-to-class="translate-y-[-8px] scale-95 opacity-0"
+      >
+        <div
+          v-if="supportOpen"
+          class="w-full rounded-2xl border border-uva-orange/30 bg-gradient-to-br from-uva-blue/70 via-slate-900/80 to-uva-orange/25 px-5 py-4 text-left shadow-[0_16px_45px_rgba(7,12,24,0.55)] backdrop-blur-md"
+        >
+          <h4
+            class="mb-3 text-center text-sm font-bold uppercase tracking-wide text-uva-orange"
+          >
+            Support
+          </h4>
+          <div class="space-y-4 text-xs leading-relaxed text-slate-100">
+            <div>
+              <p class="font-semibold text-slate-200">Help</p>
+              <p class="mt-1">
+                Contact the professor at
+                <a
+                  class="text-uva-orange underline decoration-uva-orange/50 underline-offset-2 hover:text-white"
+                  :href="`mailto:${supportProfessorEmail}`"
+                  >{{ supportProfessorEmail }}</a
+                >.
+              </p>
+            </div>
+            <div>
+              <p class="font-semibold text-slate-200">Contact</p>
+              <p class="mt-1 text-slate-300">
+                For inquiries, you can reach out to:
+              </p>
+              <ol class="mt-2 list-decimal space-y-1.5 pl-5 text-slate-100">
+                <li v-for="(email, idx) in supportContactEmails" :key="idx">
+                  <a
+                    class="text-uva-orange underline decoration-uva-orange/50 underline-offset-2 hover:text-white"
+                    :href="`mailto:${email}`"
+                    >{{ email }}</a
+                  >
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </div>
+
     <div class="card p-8 text-center">
       <h2 class="glow-title text-7xl font-extrabold tracking-tight md:text-8xl">
         Notifix
@@ -45,7 +106,8 @@
             <div>
               <p class="font-semibold text-white">{{ slot.ta_name }}</p>
               <p class="text-sm text-slate-200">
-                {{ formatDate(slot.date) }} · {{ formatTimeRangeFromSlot(slot) }}
+                {{ formatDate(slot.date) }} ·
+                {{ formatTimeRangeFromSlot(slot) }}
               </p>
               <p class="text-sm text-slate-200">{{ slot.location }}</p>
               <p class="mt-1 text-sm font-medium text-uva-orange">
@@ -77,7 +139,7 @@
               <button
                 type="button"
                 class="rounded-lg bg-slate-600 px-4 py-2 text-sm font-medium text-white hover:bg-slate-500"
-                @click="goEditOnOfficeHoursPage(slot)"
+                @click="startEdit(slot)"
               >
                 Edit
               </button>
@@ -136,7 +198,7 @@
                 <button
                   v-if="isStaff"
                   class="flex-auto rounded bg-slate-600 px-1 py-1 text-center text-white"
-                  @click.stop="goEditOnOfficeHoursPage(slot)"
+                  @click.stop="startEdit(slot)"
                 >
                   Edit
                 </button>
@@ -185,69 +247,10 @@
             class="w-full rounded-2xl border border-uva-orange/30 bg-gradient-to-br from-uva-blue/70 via-slate-900/80 to-uva-orange/25 px-5 py-4 text-center shadow-[0_16px_45px_rgba(7,12,24,0.55)] backdrop-blur-md"
           >
             <p class="text-xs leading-relaxed text-slate-100">
-              Notifix is a UVA Engineering Foundations platform where students can
-              find and join office hours, request appointments, and learn about
-              TAs in one place.
+              Notifix is a UVA Engineering Foundations platform where students
+              can find and join office hours, request appointments, and learn
+              about TAs in one place.
             </p>
-          </div>
-        </Transition>
-      </div>
-
-      <!-- Support: separate block with clear vertical spacing from About -->
-      <div class="flex w-full flex-col items-center gap-4 border-t border-white/10 pt-12">
-        <button
-          class="group w-fit rounded-full border border-uva-orange/40 bg-gradient-to-r from-uva-blue/30 to-uva-orange/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-uva-orange shadow-[0_0_0_rgba(248,76,30,0)] backdrop-blur-md transition-all duration-500 hover:-translate-y-0.5 hover:border-uva-orange/70 hover:shadow-[0_0_20px_rgba(248,76,30,0.45)]"
-          type="button"
-          @click="toggleSupport"
-        >
-          <span class="transition-colors duration-300 group-hover:text-white"
-            >Support</span
-          >
-        </button>
-
-        <Transition
-          enter-active-class="transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          enter-from-class="translate-y-[-18px] scale-95 opacity-0 blur-[2px]"
-          enter-to-class="translate-y-0 scale-100 opacity-100 blur-0"
-          leave-active-class="transition-all duration-350 ease-in"
-          leave-from-class="translate-y-0 scale-100 opacity-100"
-          leave-to-class="translate-y-[-8px] scale-95 opacity-0"
-        >
-          <div
-            v-if="supportOpen"
-            class="w-full rounded-2xl border border-uva-orange/30 bg-gradient-to-br from-uva-blue/70 via-slate-900/80 to-uva-orange/25 px-5 py-4 text-left shadow-[0_16px_45px_rgba(7,12,24,0.55)] backdrop-blur-md"
-          >
-            <h4 class="mb-3 text-center text-sm font-bold uppercase tracking-wide text-uva-orange">
-              Support
-            </h4>
-            <div class="space-y-4 text-xs leading-relaxed text-slate-100">
-              <div>
-                <p class="font-semibold text-slate-200">Help</p>
-                <p class="mt-1">
-                  Contact the professor at
-                  <a
-                    class="text-uva-orange underline decoration-uva-orange/50 underline-offset-2 hover:text-white"
-                    :href="`mailto:${supportProfessorEmail}`"
-                    >{{ supportProfessorEmail }}</a
-                  >.
-                </p>
-              </div>
-              <div>
-                <p class="font-semibold text-slate-200">Contact</p>
-                <p class="mt-1 text-slate-300">
-                  For inquiries, you can reach out to:
-                </p>
-                <ol class="mt-2 list-decimal space-y-1.5 pl-5 text-slate-100">
-                  <li v-for="(email, idx) in supportContactEmails" :key="idx">
-                    <a
-                      class="text-uva-orange underline decoration-uva-orange/50 underline-offset-2 hover:text-white"
-                      :href="`mailto:${email}`"
-                      >{{ email }}</a
-                    >
-                  </li>
-                </ol>
-              </div>
-            </div>
           </div>
         </Transition>
       </div>
@@ -270,7 +273,8 @@
             </h3>
             <p class="text-sm text-slate-200">{{ selectedSlot.ta_name }}</p>
             <p class="text-sm text-slate-300">
-              {{ selectedSlot.date }} · {{ formatTimeRangeFromSlot(selectedSlot) }}
+              {{ selectedSlot.date }} ·
+              {{ formatTimeRangeFromSlot(selectedSlot) }}
             </p>
             <p class="text-sm text-slate-300">{{ selectedSlot.location }}</p>
             <p class="mt-1 text-sm font-medium text-uva-orange">
@@ -339,7 +343,9 @@
               </span>
             </div>
           </div>
-          <p v-else class="text-xs text-slate-400">No students signed up yet.</p>
+          <p v-else class="text-xs text-slate-400">
+            No students signed up yet.
+          </p>
         </div>
       </div>
     </div>
@@ -347,7 +353,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, reactive } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../lib/api";
 import {
@@ -360,7 +366,6 @@ import {
 } from "../composables/useOfficeHours";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const router = useRouter();
 const { isStudent, isStaff, authProfile } = useAuthProfile();
 
 const sessionModalOpen = ref(false);
@@ -482,11 +487,64 @@ const formatTimeRangeFromSlot = (slot) => {
   return formatTimeRange(slot.time, end);
 };
 
-function goEditOnOfficeHoursPage(slot) {
-  router.push({
-    path: "/office-hours",
-    query: { edit: String(slot.id) },
-  });
+const showEditForm = ref(false);
+const editingId = ref(null);
+const editForm = reactive({
+  ta_name: "",
+  location: "",
+  date: "",
+  time: "",
+  end_time: "",
+});
+const editErrorMessage = ref("");
+const editSaveSuccess = ref(false);
+
+function startEdit(slot) {
+  showEditForm.value = true;
+  editingId.value = slot.id;
+  editForm.ta_name = slot.ta_name;
+  editForm.location = slot.location;
+  editForm.date = slot.date;
+  editForm.time = slot.time ? slot.time.slice(0, 5) : "";
+  if (slot.end_time) {
+    editForm.end_time = slot.end_time.slice(0, 5);
+  } else {
+    editForm.end_time = guessEndTime(slot.time, slot.duration_minutes ?? 60);
+  }
+}
+
+function closeEditForm() {
+  showEditForm.value = false;
+  editingId.value = null;
+}
+
+async function submitEditForm() {
+  editErrorMessage.value = "";
+  if (
+    editForm.time &&
+    editForm.end_time &&
+    editForm.time >= editForm.end_time
+  ) {
+    editErrorMessage.value = "The end time must be after the start time.";
+    return;
+  }
+  try {
+    await api.put(`/office-hours/${editingId.value}`, { ...editForm });
+    closeEditForm();
+    editSaveSuccess.value = true;
+    setTimeout(() => {
+      editSaveSuccess.value = false;
+    }, 3000);
+    await fetchOfficeHours();
+    if (selectedSlot.value && selectedSlot.value.id === editingId.value) {
+      const updated = officeHours.value.find((s) => s.id === editingId.value);
+      if (updated) selectedSlot.value = updated;
+    }
+  } catch (error) {
+    console.error("Failed to save office hour:", error);
+    editErrorMessage.value =
+      error.response?.data?.message || "An error occurred while saving.";
+  }
 }
 
 async function deleteOfficeHour(id, { skipConfirm = false } = {}) {
@@ -537,7 +595,7 @@ const quickEditFromModal = () => {
   if (!selectedSlot.value) return;
   const slot = selectedSlot.value;
   closeSessionModal();
-  goEditOnOfficeHoursPage(slot);
+  startEdit(slot);
 };
 
 const quickDeleteFromModal = async () => {
