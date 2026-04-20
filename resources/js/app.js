@@ -11,6 +11,7 @@ import InstructorDashboard from "./pages/InstructorDashboard.vue";
 import AnnouncementsPage from "./pages/AnnouncementsPage.vue";
 import SignupPage from "./pages/SignupPage.vue";
 import ProfilePage from "./pages/ProfilePage.vue";
+import SupportPage from "./pages/SupportPage.vue";
 import {
   getStoredAuthProfile,
   initializeAuth,
@@ -37,6 +38,7 @@ const router = createRouter({
     { path: "/profile", component: ProfilePage },
     { path: "/instructor-dashboard", component: InstructorDashboard },
     { path: "/announcements", component: AnnouncementsPage },
+    { path: "/support", component: SupportPage },
   ],
 });
 
@@ -45,7 +47,8 @@ router.beforeEach(async (to) => {
   const profile = await getStoredAuthProfile();
   const isVerified = Boolean(profile?.verified);
 
-  if (!isVerified && to.path !== "/signup") return "/signup";
+  if (!isVerified && to.path !== "/signup" && to.path !== "/support")
+    return "/signup";
   if (isVerified && to.path === "/signup") return "/";
 
   if (to.path === "/instructor-dashboard") {

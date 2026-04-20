@@ -11,7 +11,7 @@
       >
         Notifix
       </RouterLink>
-      <div v-if="visibleNavItems.length" class="flex flex-wrap gap-2 text-sm">
+      <div class="flex flex-wrap items-center gap-2 text-sm">
         <RouterLink
           v-for="item in visibleNavItems"
           :key="item.to"
@@ -20,9 +20,14 @@
         >
           {{ item.label }}
         </RouterLink>
-        <button @click="isSupportModalOpen = true" :class="inactiveLinkClass">
+        <RouterLink
+          to="/support"
+          :class="
+            route.path === '/support' ? activeLinkClass : inactiveLinkClass
+          "
+        >
           Support
-        </button>
+        </RouterLink>
       </div>
       <RouterLink
         v-if="authProfile?.verified"
@@ -35,52 +40,15 @@
       </RouterLink>
     </div>
   </nav>
-
-  <div
-    v-if="isSupportModalOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-    @click.self="isSupportModalOpen = false"
-  >
-    <div
-      class="w-full max-w-md rounded-xl bg-slate-900 p-6 shadow-2xl border border-white/10"
-    >
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-xl font-bold text-uva-orange">Support Info</h2>
-        <button
-          @click="isSupportModalOpen = false"
-          class="text-slate-400 hover:text-white"
-        >
-          ✕
-        </button>
-      </div>
-      <div class="space-y-3 text-sm text-slate-200">
-        <p>
-          If you need help, please contact the administrator at
-          support@virginia.edu.
-        </p>
-        <p>Office hours and TA assignments are managed by your professors.</p>
-      </div>
-      <div class="mt-6 flex justify-end">
-        <button
-          @click="isSupportModalOpen = false"
-          class="rounded border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/20"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
 const route = useRoute();
 const { initials, authProfile, isProfessor } = useAuthProfile();
-
-const isSupportModalOpen = ref(false);
 
 const navItems = [
   { to: "/announcements", label: "Announcements" },
