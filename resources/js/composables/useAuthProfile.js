@@ -1,6 +1,17 @@
 import { computed, ref } from "vue";
+import {
+  CognitoIdentityProviderClient,
+  SignUpCommand,
+  ConfirmSignUpCommand,
+  InitiateAuthCommand,
+  GetUserCommand,
+  ResendConfirmationCodeCommand,
+  ChangePasswordCommand,
+  UpdateUserAttributesCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
 
 const AUTH_KEY = "notifix_auth_profile";
+const TOKENS_KEY = "notifix_auth_tokens";
 const LS_EXTRA_TA = "notifix_extra_ta_emails";
 const LS_EXTRA_PROFESSOR = "notifix_extra_professor_emails";
 
@@ -23,8 +34,62 @@ const authError = ref("");
 let initialized = false;
 let storageListenerAttached = false;
 
+let client = null;
+
+function env(name, fallback = "") {
+  return import.meta.env[name] || fallback;
+}
+
+const cognitoConfig = {
+  region: env("VITE_AWS_REGION", "us-east-1"),
+  userPoolId: env("VITE_COGNITO_USER_POOL_ID", ""),
+  clientId: env("VITE_COGNITO_APP_CLIENT_ID", ""),
+};
+
+function getClient() {
+  if (!client) {
+    client = new CognitoIdentityProviderClient({ region: cognitoConfig.region });
+  }
+  return client;
+}
+
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
+}
+
+function parseJwt(token) {
+  try {
+    const payload = token.split(".")[1];
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function readTokens() {
+  try {
+    const raw = sessionStorage.getItem(TOKENS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.idToken || !parsed?.accessToken) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeTokens(tokens) {
+  if (!tokens) {
+    sessionStorage.removeItem(TOKENS_KEY);
+    return;
+  }
+  sessionStorage.setItem(TOKENS_KEY, JSON.stringify(tokens));
+}
+
+export function getAccessToken() {
+  return readTokens()?.accessToken || "";
 }
 
 function readExtraList(key) {
@@ -141,6 +206,16 @@ function roleFromEmail(email) {
   return "student";
 }
 
+function roleFromGroupsOrEmail(groups, email) {
+  const normalizedGroups = Array.isArray(groups)
+    ? groups.map((group) => String(group).trim().toLowerCase())
+    : [];
+  if (normalizedGroups.includes("professor")) return "professor";
+  if (normalizedGroups.includes("ta")) return "ta";
+  if (normalizedGroups.includes("student")) return "student";
+  return roleFromEmail(email);
+}
+
 function persistProfile(profile) {
   if (!profile) {
     sessionStorage.removeItem(AUTH_KEY);
@@ -168,8 +243,38 @@ function hydrateProfile() {
 }
 
 export async function refreshAuthProfile() {
-  authProfile.value = hydrateProfile();
+  const sessionProfile = hydrateProfile();
+  const tokens = readTokens();
   authError.value = "";
+
+  if (!tokens) {
+    authProfile.value = sessionProfile;
+    return authProfile.value;
+  }
+
+  const claims = parseJwt(tokens.idToken);
+  const exp = claims?.exp ? Number(claims.exp) * 1000 : 0;
+  if (!claims || (exp && exp <= Date.now())) {
+    await signOutAuth();
+    authProfile.value = null;
+    authError.value = "Session expired. Please sign in again.";
+    return null;
+  }
+
+  const email = normalizeEmail(claims.email || sessionProfile?.email);
+  const groups = claims["cognito:groups"] || [];
+  authProfile.value = {
+    id: claims.sub || sessionProfile?.id || email,
+    sub: claims.sub || "",
+    email,
+    firstName: sessionProfile?.firstName || "",
+    lastName: sessionProfile?.lastName || "",
+    role: roleFromGroupsOrEmail(groups, email),
+    groups,
+    verified: Boolean(claims.email_verified),
+    verifiedAt: sessionProfile?.verifiedAt || new Date().toISOString(),
+  };
+  persistProfile(authProfile.value);
   return authProfile.value;
 }
 
@@ -220,6 +325,103 @@ export async function signInLocalProfile({ email, firstName = "", lastName = "" 
   return profile;
 }
 
+export async function signUpWithEmailPassword({
+  firstName = "",
+  lastName = "",
+  email,
+  password,
+}) {
+  const normalizedEmail = normalizeEmail(email);
+  const command = new SignUpCommand({
+    ClientId: cognitoConfig.clientId,
+    Username: normalizedEmail,
+    Password: password,
+    UserAttributes: [
+      { Name: "email", Value: normalizedEmail },
+      { Name: "given_name", Value: firstName.trim() || normalizedEmail.split("@")[0] },
+      { Name: "family_name", Value: lastName.trim() || "User" },
+    ],
+  });
+  const response = await getClient().send(command);
+
+  const draftProfile = {
+    id: normalizedEmail,
+    email: normalizedEmail,
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    role: roleFromEmail(normalizedEmail),
+    verified: false,
+  };
+  persistProfile(draftProfile);
+  authProfile.value = draftProfile;
+  return response;
+}
+
+export async function confirmSignUpCode(email, code) {
+  const command = new ConfirmSignUpCommand({
+    ClientId: cognitoConfig.clientId,
+    Username: normalizeEmail(email),
+    ConfirmationCode: String(code || "").trim(),
+  });
+  return getClient().send(command);
+}
+
+export async function resendSignUpCode(email) {
+  const command = new ResendConfirmationCodeCommand({
+    ClientId: cognitoConfig.clientId,
+    Username: normalizeEmail(email),
+  });
+  return getClient().send(command);
+}
+
+export async function signInWithEmailPassword({ email, password }) {
+  const normalizedEmail = normalizeEmail(email);
+  const command = new InitiateAuthCommand({
+    AuthFlow: "USER_PASSWORD_AUTH",
+    ClientId: cognitoConfig.clientId,
+    AuthParameters: {
+      USERNAME: normalizedEmail,
+      PASSWORD: String(password || ""),
+    },
+  });
+
+  const result = await getClient().send(command);
+  const auth = result.AuthenticationResult;
+  if (!auth?.IdToken || !auth?.AccessToken) {
+    throw new Error("Authentication did not return tokens.");
+  }
+
+  writeTokens({
+    idToken: auth.IdToken,
+    accessToken: auth.AccessToken,
+    refreshToken: auth.RefreshToken || "",
+  });
+
+  const claims = parseJwt(auth.IdToken) || {};
+  const userResponse = await getClient().send(
+    new GetUserCommand({ AccessToken: auth.AccessToken }),
+  );
+  const attrs = Object.fromEntries(
+    (userResponse.UserAttributes || []).map((a) => [a.Name, a.Value]),
+  );
+  const groups = claims["cognito:groups"] || [];
+
+  const profile = {
+    id: claims.sub || normalizedEmail,
+    sub: claims.sub || "",
+    email: normalizeEmail(attrs.email || normalizedEmail),
+    firstName: attrs.given_name || "",
+    lastName: attrs.family_name || "",
+    role: roleFromGroupsOrEmail(groups, normalizedEmail),
+    groups,
+    verified: Boolean(claims.email_verified),
+    verifiedAt: new Date().toISOString(),
+  };
+  authProfile.value = profile;
+  persistProfile(profile);
+  return profile;
+}
+
 export async function updateLocalProfile(updates = {}) {
   const current = authProfile.value || hydrateProfile();
   if (!current) return null;
@@ -232,12 +434,39 @@ export async function updateLocalProfile(updates = {}) {
   next.verified = true;
   authProfile.value = next;
   persistProfile(next);
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    await getClient().send(
+      new UpdateUserAttributesCommand({
+        AccessToken: accessToken,
+        UserAttributes: [
+          { Name: "given_name", Value: next.firstName || "" },
+          { Name: "family_name", Value: next.lastName || "" },
+        ],
+      }),
+    );
+  }
   return next;
+}
+
+export async function changePasswordAuth({ currentPassword, newPassword }) {
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    throw new Error("No active session.");
+  }
+  await getClient().send(
+    new ChangePasswordCommand({
+      AccessToken: accessToken,
+      PreviousPassword: String(currentPassword || ""),
+      ProposedPassword: String(newPassword || ""),
+    }),
+  );
 }
 
 export async function signOutAuth() {
   authProfile.value = null;
   sessionStorage.removeItem(AUTH_KEY);
+  sessionStorage.removeItem(TOKENS_KEY);
 }
 
 function badgeInitials(profile) {

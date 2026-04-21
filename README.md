@@ -6,20 +6,31 @@ Current architecture:
 
 - Laravel API for core app data (office hours, announcements, appointments, TA bios)
 - Vue 3 SPA frontend (Vite + Tailwind)
-- Local/session-based auth mock for user accounts and roles (Supabase paused)
+- AWS Cognito auth for account/password/email verification
 
-## Auth + Roles (current)
+## Auth + Roles (AWS Cognito)
 
-The app currently uses a local mock auth flow for:
+The app now uses Cognito for:
 
-- email + password signup/login UI
-- lightweight verification modal flow (demo mode)
-- per-tab session-based auth state
-- role lookup from hardcoded TA/professor emails (`student` or `ta_professor`)
+- email + password signup/login
+- required email verification code flow
+- JWT-based API authentication (bearer token)
+- role resolution from Cognito groups with email allowlist fallback
 
 ### Required environment variables
 
-No Supabase environment variables are required in the paused mode.
+Set these in `.env`:
+
+```env
+AWS_DEFAULT_REGION=us-east-1
+COGNITO_USER_POOL_ID=us-east-1_yourPoolId
+COGNITO_APP_CLIENT_ID=yourAppClientId
+COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_yourPoolId
+COGNITO_JWKS_URL=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_yourPoolId/.well-known/jwks.json
+VITE_AWS_REGION=${AWS_DEFAULT_REGION}
+VITE_COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}
+VITE_COGNITO_APP_CLIENT_ID=${COGNITO_APP_CLIENT_ID}
+```
 
 ## Setup steps
 
@@ -28,7 +39,7 @@ No Supabase environment variables are required in the paused mode.
 Your friend should install these before running the project:
 
 - Git
-- PHP 8.2+ (with `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`)
+- PHP 8.4+ (with `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`)
 - Composer 2.x
 - Node.js 20+ and npm
 - SQLite (or at least SQLite support enabled in PHP)
@@ -49,6 +60,31 @@ git clone https://github.com/mohamad12-89/uva-notifix.git
 cd uva-notifix
 composer install
 npm install
+```
+
+### If you already have the repo (after pulling updates)
+
+These updates include new dependencies and Cognito settings, so do this after `git pull`:
+
+```bash
+composer install
+npm install
+cp .env.example .env   # if you do not already have .env
+php artisan config:clear
+php artisan migrate
+```
+
+Then set Cognito values in `.env`:
+
+```env
+AWS_DEFAULT_REGION=us-east-1
+COGNITO_USER_POOL_ID=us-east-1_y5iIepcok
+COGNITO_APP_CLIENT_ID=6mobivpun3a7t3crihqs6vv1e7
+COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_y5iIepcok
+COGNITO_JWKS_URL=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_y5iIepcok/.well-known/jwks.json
+VITE_AWS_REGION=us-east-1
+VITE_COGNITO_USER_POOL_ID=us-east-1_y5iIepcok
+VITE_COGNITO_APP_CLIENT_ID=6mobivpun3a7t3crihqs6vv1e7
 ```
 
 ### 1.1) Key JavaScript packages used (installed by `npm install`)
@@ -82,7 +118,7 @@ DB_CONNECTION=sqlite
 DB_DATABASE=database/database.sqlite
 ```
 
-### 3) Role mapping (hardcoded)
+### 3) Role mapping
 
 Defaults in `resources/js/composables/useAuthProfile.js`:
 
@@ -97,7 +133,7 @@ Defaults in `resources/js/composables/useAuthProfile.js`:
 - `xfw9vp@virginia.edu`
 - `uhu5nr@virginia.edu`
 
-Any other `@virginia.edu` email is treated as `student`. Professors can add more TA or professor emails from the dashboard (stored in the browser).
+Primary role source is Cognito groups (`student`, `ta`, `professor`). Allowlists are fallback when group assignment has not yet been applied.
 
 ### 4) Start app
 
@@ -112,7 +148,7 @@ Open:
 ### 5) First-run validation checklist
 
 - `npm run build` completes without errors
-- Signup opens verification modal and allows continue flow
+- Signup sends a real Cognito verification code and requires confirm before login
 - Professor account can access `/instructor-dashboard`; TA account cannot
 - Student account cannot access `/instructor-dashboard`
 
@@ -121,17 +157,16 @@ Open:
 ### Signup / login
 
 - `resources/js/pages/SignupPage.vue`
-  - Sign up flow with local verification modal (demo mode)
-  - Login flow accepts any password for `@virginia.edu` emails
-  - Verification:
-    - user confirms from the modal and is logged into a per-tab local session
+  - Sign up flow with Cognito verification code
+  - Login flow against Cognito credentials
+  - Stores Cognito JWTs in session storage and sends bearer token to API
 
 ### Session + role bootstrap
 
 - `resources/js/composables/useAuthProfile.js`
   - `initializeAuth()`
   - `refreshAuthProfile()`
-  - hardcoded role mapping by email
+  - Cognito JWT claim parsing + fallback email role mapping
   - computed role flags: `isStudent`, `isTa`, `isProfessor`, `isStaff`
 
 ### Route protection
@@ -193,10 +228,15 @@ Open:
 - `POST /api/auth/login`
 - `POST /api/auth/verify`
 
+## Deployment
+
+- EC2 single-server runbook: `docs/AWS_EC2_DEPLOY.md`
+- Remote deploy script: `scripts/ec2/deploy.sh`
+- GitHub Actions workflow: `.github/workflows/deploy-ec2.yml`
+
 ## Notes
 
-- Supabase integration is currently paused.
-- Current auth/profile state is stored in `sessionStorage` per tab.
+- Current auth/profile tokens are stored in `sessionStorage` per tab.
 - If you hit build errors, run:
   - `npm run build`
   - check for merge markers (`<<<<<<<`, `=======`, `>>>>>>>`).

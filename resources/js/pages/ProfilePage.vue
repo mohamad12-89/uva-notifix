@@ -78,6 +78,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import {
+  changePasswordAuth,
   refreshAuthProfile,
   signOutAuth,
   updateLocalProfile,
@@ -129,6 +130,10 @@ async function saveProfile() {
   );
 
   if (wantsPasswordChange) {
+    if (!form.currentPassword) {
+      error.value = "Current password is required to change password.";
+      return;
+    }
     if (!form.newPassword || !form.confirmPassword) {
       error.value = "Please fill out all new password fields.";
       return;
@@ -143,16 +148,29 @@ async function saveProfile() {
     }
   }
 
-  await updateLocalProfile({
-    firstName: form.firstName.trim(),
-    lastName: form.lastName.trim(),
-  });
-  await refreshAuthProfile();
+  try {
+    await updateLocalProfile({
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+    });
+    if (wantsPasswordChange) {
+      await changePasswordAuth({
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+      });
+    }
 
-  form.currentPassword = "";
-  form.newPassword = "";
-  form.confirmPassword = "";
-  message.value = "Profile updated successfully.";
+    await refreshAuthProfile();
+
+    form.currentPassword = "";
+    form.newPassword = "";
+    form.confirmPassword = "";
+    message.value = wantsPasswordChange
+      ? "Profile and password updated successfully."
+      : "Profile updated successfully.";
+  } catch (e) {
+    error.value = e?.message || "Could not update profile right now.";
+  }
 }
 
 async function signOut() {

@@ -106,17 +106,21 @@
       <div class="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900 p-6 shadow-2xl">
         <h3 class="text-xl font-bold text-uva-orange">Verify your email</h3>
         <p class="mt-2 text-sm text-slate-200">
-          We sent a verification link to
+          We sent a verification code to
           <span class="font-semibold">{{ verificationEmail }}</span>.
-          Click the link in your email to continue.
+          Enter it below to continue.
         </p>
-        <p class="mt-3 rounded-lg bg-white/10 p-3 text-sm text-slate-200">
-          Time remaining: <span class="font-semibold">{{ verificationSecondsRemaining }}s</span>
-        </p>
+        <input
+          v-model.trim="verificationCode"
+          type="text"
+          maxlength="6"
+          class="input mt-4 w-full"
+          placeholder="6-digit verification code"
+        />
 
         <div class="mt-4 grid grid-cols-1 gap-2">
-          <button class="button-primary w-full" type="button" @click="checkVerificationStatus">
-            I clicked the verification link
+          <button class="button-primary w-full" type="button" @click="confirmVerificationCode">
+            Verify and continue
           </button>
           <button class="button-secondary w-full" type="button" @click="resendVerificationEmail">
             Resend verification email
@@ -141,10 +145,13 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import {
+  confirmSignUpCode,
   getStoredAuthProfile,
   initializeAuth,
   refreshAuthProfile,
-  signInLocalProfile,
+  resendSignUpCode,
+  signInWithEmailPassword,
+  signUpWithEmailPassword,
 } from "../composables/useAuthProfile";
 
 const router = useRouter();
@@ -154,11 +161,9 @@ const error = ref("");
 const message = ref("");
 const showVerificationModal = ref(false);
 const verificationEmail = ref("");
-const verificationSecondsRemaining = ref(60);
+const verificationCode = ref("");
 const verificationError = ref("");
 const verificationNote = ref("");
-let verificationCountdownInterval = null;
-let verificationPollInterval = null;
 
 const form = reactive({
   firstName: "",
@@ -201,23 +206,24 @@ async function startVerification() {
     return;
   }
 
-  const normalizedEmail = form.email.trim().toLowerCase();
-  verificationEmail.value = normalizedEmail;
-  showVerificationModal.value = true;
-  verificationError.value = "";
-  verificationNote.value =
-    "Verification email sent (demo mode). Click the button below to continue.";
-  startVerificationCountdown();
-}
-
-function clearVerificationTimers() {
-  if (verificationCountdownInterval) {
-    clearInterval(verificationCountdownInterval);
-    verificationCountdownInterval = null;
-  }
-  if (verificationPollInterval) {
-    clearInterval(verificationPollInterval);
-    verificationPollInterval = null;
+  try {
+    await signUpWithEmailPassword({
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      password: form.password,
+    });
+    verificationEmail.value = form.email.trim().toLowerCase();
+    verificationCode.value = "";
+    showVerificationModal.value = true;
+    verificationError.value = "";
+    verificationNote.value = "Verification code sent. Check your UVA inbox.";
+  } catch (err) {
+    verificationError.value = "";
+    error.value =
+      err?.name === "UsernameExistsException"
+        ? "This email already has an account. Try logging in."
+        : err?.message || "Could not start sign-up. Please try again.";
   }
 }
 
@@ -225,48 +231,42 @@ function closeVerificationModal() {
   showVerificationModal.value = false;
   verificationError.value = "";
   verificationNote.value = "";
-  clearVerificationTimers();
+  verificationCode.value = "";
 }
 
-function startVerificationCountdown() {
-  clearVerificationTimers();
-  verificationSecondsRemaining.value = 60;
-  verificationCountdownInterval = setInterval(() => {
-    verificationSecondsRemaining.value = Math.max(
-      0,
-      verificationSecondsRemaining.value - 1,
-    );
-    if (verificationSecondsRemaining.value === 0) {
-      verificationError.value =
-        "Verification timed out. Resend or change email to continue.";
-      clearVerificationTimers();
-    }
-  }, 1000);
-}
-
-async function checkVerificationStatus(showPendingMessage = true) {
-  if (verificationSecondsRemaining.value <= 0) {
-    verificationError.value = "Session expired. Please resend verification.";
+async function confirmVerificationCode() {
+  if (!verificationCode.value.trim()) {
+    verificationError.value = "Please enter the verification code from your email.";
     return;
   }
-  verificationError.value = "";
-  await signInLocalProfile({
-    email: verificationEmail.value,
-    firstName: form.firstName,
-    lastName: form.lastName,
-  });
-  await refreshAuthProfile();
-  closeVerificationModal();
-  authMode.value = "login";
-  message.value = "Email verified successfully.";
-  router.replace("/");
+  try {
+    await confirmSignUpCode(verificationEmail.value, verificationCode.value);
+    await signInWithEmailPassword({
+      email: verificationEmail.value,
+      password: form.password,
+    });
+    await refreshAuthProfile();
+    closeVerificationModal();
+    message.value = "Email verified successfully.";
+    router.replace("/");
+  } catch (err) {
+    verificationError.value =
+      err?.name === "CodeMismatchException"
+        ? "The verification code is incorrect."
+        : err?.name === "ExpiredCodeException"
+          ? "That code expired. Request a new one."
+          : err?.message || "Verification failed.";
+  }
 }
 
 async function resendVerificationEmail() {
-  verificationError.value = "";
-  verificationNote.value = "";
-  verificationNote.value = "Verification email resent (demo mode).";
-  startVerificationCountdown();
+  try {
+    verificationError.value = "";
+    await resendSignUpCode(verificationEmail.value);
+    verificationNote.value = "A new verification code was sent.";
+  } catch (err) {
+    verificationError.value = err?.message || "Could not resend code.";
+  }
 }
 
 function changeSignupEmail() {
@@ -287,14 +287,19 @@ async function login() {
     return;
   }
 
-  const email = loginForm.email.trim().toLowerCase();
-  await signInLocalProfile({
-    email,
-    firstName: "",
-    lastName: "",
-  });
-  await refreshAuthProfile();
-  router.replace("/");
+  try {
+    await signInWithEmailPassword({
+      email: loginForm.email.trim().toLowerCase(),
+      password: loginForm.password,
+    });
+    await refreshAuthProfile();
+    router.replace("/");
+  } catch (err) {
+    error.value =
+      err?.name === "UserNotConfirmedException"
+        ? "Your email is not verified yet. Please complete verification first."
+        : err?.message || "Could not sign in. Check your email and password.";
+  }
 }
 
 onMounted(async () => {
@@ -306,6 +311,6 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  clearVerificationTimers();
+  closeVerificationModal();
 });
 </script>
