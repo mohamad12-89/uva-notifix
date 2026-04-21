@@ -230,9 +230,9 @@ Open:
 
 ## Deployment
 
-- EC2 single-server runbook: `docs/AWS_EC2_DEPLOY.md`
-- Remote deploy script: `scripts/ec2/deploy.sh`
-- GitHub Actions workflow: `.github/workflows/deploy-ec2.yml`
+- EC2 deployment assets were intentionally removed from this project.
+- AWS is currently used only for Cognito authentication (verification + password management).
+- Hosting/runtime setup is intentionally left for later.
 
 ## Notes
 
