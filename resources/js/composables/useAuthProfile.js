@@ -388,7 +388,18 @@ export async function signInWithEmailPassword({ email, password }) {
   const result = await getClient().send(command);
   const auth = result.AuthenticationResult;
   if (!auth?.IdToken || !auth?.AccessToken) {
-    throw new Error("Authentication did not return tokens.");
+    const challenge = result?.ChallengeName || "UNKNOWN_CHALLENGE";
+    if (challenge === "NEW_PASSWORD_REQUIRED") {
+      throw new Error(
+        "This account requires a new password before sign-in. Reset or set a permanent password in Cognito first.",
+      );
+    }
+    if (challenge === "USER_NOT_CONFIRMED") {
+      throw new Error("Email is not confirmed yet. Complete verification first.");
+    }
+    throw new Error(
+      `Authentication did not return tokens (challenge: ${challenge}).`,
+    );
   }
 
   writeTokens({
