@@ -64,27 +64,34 @@ npm install
 
 ### If you already have the repo (after pulling updates)
 
-These updates include new dependencies and Cognito settings, so do this after `git pull`:
+Yes — because of the Cognito integration, your friends need to install/update dependencies after pulling.
+
+After `git pull`, run:
 
 ```bash
 composer install
 npm install
-cp .env.example .env   # if you do not already have .env
-php artisan config:clear
-php artisan migrate
 ```
 
-Then set Cognito values in `.env`:
+Make sure `.env` has these Cognito values:
 
 ```env
 AWS_DEFAULT_REGION=us-east-1
 COGNITO_USER_POOL_ID=us-east-1_y5iIepcok
-COGNITO_APP_CLIENT_ID=6mobivpun3a7t3crihqs6vv1e7
+COGNITO_APP_CLIENT_ID=7pr91atefpbav8deqfvgtifllb
 COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_y5iIepcok
 COGNITO_JWKS_URL=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_y5iIepcok/.well-known/jwks.json
 VITE_AWS_REGION=us-east-1
 VITE_COGNITO_USER_POOL_ID=us-east-1_y5iIepcok
-VITE_COGNITO_APP_CLIENT_ID=6mobivpun3a7t3crihqs6vv1e7
+VITE_COGNITO_APP_CLIENT_ID=7pr91atefpbav8deqfvgtifllb
+```
+
+Then run:
+
+```bash
+php artisan config:clear
+php artisan migrate
+npm run dev:full
 ```
 
 ### 1.1) Key JavaScript packages used (installed by `npm install`)
