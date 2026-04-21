@@ -28,7 +28,7 @@ export const DEFAULT_PROFESSOR_EMAILS = [
   "amm8km@virginia.edu",
 ];
 
-const authProfile = ref(null);
+export const authProfile = ref(null);
 const authReady = ref(false);
 const authError = ref("");
 let initialized = false;
@@ -90,6 +90,11 @@ function writeTokens(tokens) {
 
 export function getAccessToken() {
   return readTokens()?.accessToken || "";
+}
+
+/** ID token (preferred for Laravel API auth — includes email and standard claims). */
+export function getIdToken() {
+  return readTokens()?.idToken || "";
 }
 
 function readExtraList(key) {

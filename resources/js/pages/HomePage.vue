@@ -449,6 +449,7 @@
 import { onMounted, ref, computed, reactive } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../lib/api";
+import { syncProfessorRoleRegistryToApi } from "../lib/roleRegistrySync";
 import {
   officeHours,
   joinedSessions,
@@ -739,5 +740,8 @@ const toggleJoin = async (id) => {
 const formatDate = (value) =>
   new Date(`${value}T00:00:00`).toLocaleDateString();
 
-onMounted(fetchOfficeHours);
+onMounted(async () => {
+  await syncProfessorRoleRegistryToApi();
+  await fetchOfficeHours();
+});
 </script>

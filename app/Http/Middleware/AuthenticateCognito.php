@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\CognitoJwtVerifier;
+use App\Support\RoleRegistryAllowlist;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class AuthenticateCognito
             return new JsonResponse(['message' => 'Invalid token.', 'error' => $e->getMessage()], 401);
         }
 
-        $email = strtolower((string) ($claims['email'] ?? ''));
+        $email = $this->resolveEmailFromClaims($claims);
         $groups = $claims['cognito:groups'] ?? [];
         if (! is_array($groups)) {
             $groups = [];
@@ -49,10 +50,41 @@ class AuthenticateCognito
     }
 
     /**
+     * @param array<string, mixed> $claims
+     */
+    private function resolveEmailFromClaims(array $claims): string
+    {
+        $raw = trim((string) ($claims['email'] ?? ''));
+        if ($raw !== '' && str_contains($raw, '@')) {
+            return strtolower($raw);
+        }
+
+        // Access tokens often omit `email`; username may be the sign-in identifier.
+        foreach (['username', 'cognito:username'] as $key) {
+            $candidate = strtolower(trim((string) ($claims[$key] ?? '')));
+            if ($candidate !== '' && str_contains($candidate, '@')) {
+                return $candidate;
+            }
+        }
+
+        return strtolower($raw);
+    }
+
+    /**
      * @param array<int,string> $groups
      */
     private function resolveRole(string $email, array $groups): string
     {
+        $registry = RoleRegistryAllowlist::extras();
+        $professorAllowlist = array_values(array_unique(array_merge(
+            (array) config('cognito.professor_allowlist', []),
+            $registry['professor'],
+        )));
+        $taAllowlist = array_values(array_unique(array_merge(
+            (array) config('cognito.ta_allowlist', []),
+            $registry['ta'],
+        )));
+
         $normalized = array_map(static fn ($g) => strtolower(trim((string) $g)), $groups);
         if (in_array('professor', $normalized, true)) {
             return 'professor';
@@ -60,15 +92,18 @@ class AuthenticateCognito
         if (in_array('ta', $normalized, true)) {
             return 'ta';
         }
-        if (in_array('student', $normalized, true)) {
-            return 'student';
-        }
 
-        if ($email && in_array($email, (array) config('cognito.professor_allowlist', []), true)) {
+        // Allowlists must run before the generic "student" group, or every pool
+        // member in group "student" is locked out of TA/professor API routes.
+        if ($email && in_array($email, $professorAllowlist, true)) {
             return 'professor';
         }
-        if ($email && in_array($email, (array) config('cognito.ta_allowlist', []), true)) {
+        if ($email && in_array($email, $taAllowlist, true)) {
             return 'ta';
+        }
+
+        if (in_array('student', $normalized, true)) {
+            return 'student';
         }
 
         return 'student';

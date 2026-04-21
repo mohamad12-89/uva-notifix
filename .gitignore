@@ -17,6 +17,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/notifix_role_registry.json
 /storage/pail
 /vendor
 Homestead.json

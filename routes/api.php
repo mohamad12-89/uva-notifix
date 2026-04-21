@@ -3,11 +3,15 @@
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InstructorRoleRegistryController;
 use App\Http\Controllers\OfficeHourController;
 use App\Http\Controllers\TaBioController;
 use Illuminate\Support\Facades\Route;
  
 Route::middleware('cognito.auth')->group(function () {
+    Route::post('/instructor/sync-role-registry', [InstructorRoleRegistryController::class, 'sync'])
+        ->middleware('role:professor');
+
     Route::get('/office-hours', [OfficeHourController::class, 'index']);
     Route::post('/office-hours', [OfficeHourController::class, 'store'])->middleware('role:ta,professor');
     Route::put('/office-hours/{officeHour}', [OfficeHourController::class, 'update'])->middleware('role:ta,professor');

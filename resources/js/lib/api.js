@@ -1,12 +1,12 @@
 import axios from 'axios';
-import { getAccessToken } from "../composables/useAuthProfile";
+import { getIdToken, getAccessToken } from "../composables/useAuthProfile";
 
 export const api = axios.create({
     baseURL: '/api',
 });
 
 api.interceptors.request.use((config) => {
-    const token = getAccessToken();
+    const token = getIdToken() || getAccessToken();
     if (token) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;

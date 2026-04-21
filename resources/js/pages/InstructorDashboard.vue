@@ -318,6 +318,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { api } from "../lib/api";
+import { syncProfessorRoleRegistryToApi } from "../lib/roleRegistrySync";
 import {
   listTaEmailsForDisplay,
   listProfessorEmailsForDisplay,
@@ -350,6 +351,7 @@ function refreshRoleRows() {
   taRows.value = listTaEmailsForDisplay();
   professorRows.value = listProfessorEmailsForDisplay();
   notifyRoleRegistryUpdated();
+  void syncProfessorRoleRegistryToApi();
 }
 
 function submitTaEmail() {
@@ -480,5 +482,6 @@ const exportCSV = () => {
 
 onMounted(() => {
   fetchAnalytics();
+  void syncProfessorRoleRegistryToApi();
 });
 </script>

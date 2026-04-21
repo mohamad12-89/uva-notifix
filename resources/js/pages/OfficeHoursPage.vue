@@ -406,6 +406,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "../lib/api";
+import { syncProfessorRoleRegistryToApi } from "../lib/roleRegistrySync";
 import {
   officeHours,
   joinedSessions,
@@ -828,6 +829,7 @@ async function openEditFromQueryIfPresent() {
 }
 
 onMounted(async () => {
+  await syncProfessorRoleRegistryToApi();
   await fetchOfficeHours();
   await openEditFromQueryIfPresent();
 });
