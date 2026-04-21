@@ -232,6 +232,128 @@
     </div>
 
     <div
+      v-if="isStaff && showEditForm && editingId"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      @click.self="closeEditForm"
+    >
+      <div class="card w-full max-w-lg p-6 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-xl font-bold text-uva-orange">Edit Office Hours</h3>
+          <button
+            type="button"
+            class="text-slate-400 hover:text-white"
+            @click="closeEditForm"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form @submit.prevent="submitEditForm" class="space-y-4">
+          <div
+            v-if="editErrorMessage"
+            class="rounded-md border border-red-500/30 bg-red-500/20 p-3 text-sm text-red-400"
+          >
+            {{ editErrorMessage }}
+          </div>
+          <div
+            v-if="editSaveSuccess"
+            class="rounded-md border border-green-500/30 bg-green-500/20 p-3 text-sm text-green-400"
+          >
+            Saved successfully.
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="w-full space-y-1">
+              <label
+                for="home-edit-ta-name"
+                class="text-sm font-medium text-slate-200"
+              >
+                Host name
+              </label>
+              <input
+                id="home-edit-ta-name"
+                v-model="editForm.ta_name"
+                required
+                class="input min-w-0 w-full"
+                placeholder="TA, instructor, or guest host"
+              />
+            </div>
+            <div class="w-full space-y-1">
+              <label
+                for="home-edit-location"
+                class="text-sm font-medium text-slate-200"
+              >
+                Location
+              </label>
+              <input
+                id="home-edit-location"
+                v-model="editForm.location"
+                required
+                class="input min-w-0 w-full"
+                placeholder="Location"
+              />
+            </div>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-3">
+            <div class="w-full space-y-1">
+              <label
+                for="home-edit-date"
+                class="text-sm font-medium text-slate-200"
+              >
+                Date
+              </label>
+              <input
+                id="home-edit-date"
+                v-model="editForm.date"
+                required
+                class="input min-w-0 w-full"
+                type="date"
+              />
+            </div>
+            <div class="w-full space-y-1">
+              <label
+                for="home-edit-start"
+                class="text-sm font-medium text-slate-200"
+              >
+                Start time
+              </label>
+              <input
+                id="home-edit-start"
+                v-model="editForm.time"
+                required
+                class="input min-w-0 w-full"
+                type="time"
+              />
+            </div>
+            <div class="w-full space-y-1">
+              <label
+                for="home-edit-end"
+                class="text-sm font-medium text-slate-200"
+              >
+                End time
+              </label>
+              <input
+                id="home-edit-end"
+                v-model="editForm.end_time"
+                required
+                class="input min-w-0 w-full"
+                type="time"
+              />
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end gap-3 pt-2">
+            <button type="button" class="button-secondary" @click="closeEditForm">
+              Cancel
+            </button>
+            <button class="button-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
       v-if="isStaff && sessionModalOpen && selectedSlot"
       class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
       @click.self="closeSessionModal"
@@ -480,6 +602,7 @@ function startEdit(slot) {
 function closeEditForm() {
   showEditForm.value = false;
   editingId.value = null;
+  editErrorMessage.value = "";
 }
 
 async function submitEditForm() {
@@ -492,16 +615,17 @@ async function submitEditForm() {
     editErrorMessage.value = "The end time must be after the start time.";
     return;
   }
+  const idBeingEdited = editingId.value;
   try {
-    await api.put(`/office-hours/${editingId.value}`, { ...editForm });
+    await api.put(`/office-hours/${idBeingEdited}`, { ...editForm });
     closeEditForm();
     editSaveSuccess.value = true;
     setTimeout(() => {
       editSaveSuccess.value = false;
     }, 3000);
     await fetchOfficeHours();
-    if (selectedSlot.value && selectedSlot.value.id === editingId.value) {
-      const updated = officeHours.value.find((s) => s.id === editingId.value);
+    if (selectedSlot.value && selectedSlot.value.id === idBeingEdited) {
+      const updated = officeHours.value.find((s) => s.id === idBeingEdited);
       if (updated) selectedSlot.value = updated;
     }
   } catch (error) {

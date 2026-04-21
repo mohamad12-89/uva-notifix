@@ -55,9 +55,16 @@
         </div>
       </div>
 
-      <button v-if="isTaProfessor" class="button-secondary" @click="openForm">
+      <button v-if="isTaProfessor" class="button-secondary" @click="openForm()">
         Add Office Hours
       </button>
+    </div>
+
+    <div
+      v-if="operationError"
+      class="rounded-lg border border-red-500/30 bg-red-500/20 p-3 text-center text-sm font-medium text-red-300"
+    >
+      {{ operationError }}
     </div>
 
     <div
@@ -100,14 +107,14 @@
                 for="office-hour-ta-name"
                 class="text-sm font-medium text-slate-200"
               >
-                TA Name
+                Host name
               </label>
               <input
                 id="office-hour-ta-name"
                 v-model="form.ta_name"
                 required
                 class="input w-full min-w-0"
-                placeholder="TA name"
+                placeholder="TA, instructor, or guest host"
               />
             </div>
             <div class="space-y-1 w-full">
@@ -231,13 +238,23 @@
               day.inMonth ? 'opacity-100' : 'pointer-events-none opacity-0'
             "
           >
-            <p
+            <div
               v-if="day.inMonth"
-              class="mb-2 text-sm font-semibold"
-              :class="'text-slate-100'"
+              class="mb-2 flex items-center justify-between gap-2"
             >
-              {{ day.label }}
-            </p>
+              <p class="text-sm font-semibold text-slate-100">
+                {{ day.label }}
+              </p>
+              <button
+                v-if="isTaProfessor"
+                type="button"
+                class="shrink-0 rounded border border-uva-orange/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-uva-orange hover:bg-uva-orange/15"
+                title="Schedule office hours on this day"
+                @click.stop="openFormForDay(day.key)"
+              >
+                + Add
+              </button>
+            </div>
 
             <div v-if="day.inMonth" class="space-y-2">
               <div
@@ -421,13 +438,17 @@ const form = reactive({
 let searchCloseTimer = null;
 const saveSuccess = ref(false);
 const errorMessage = ref("");
+const operationError = ref("");
 const sessionModalOpen = ref(false);
 const selectedSlot = ref(null);
 const modalSignups = ref([]);
 const loadingSignups = ref(false);
 
-const openForm = () => {
+const openForm = (presetDate = "") => {
   resetForm();
+  if (presetDate) {
+    form.date = presetDate;
+  }
   if (authProfile.value) {
     const profile = authProfile.value;
     const fullName =
@@ -435,6 +456,10 @@ const openForm = () => {
     if (fullName) form.ta_name = fullName;
   }
   showForm.value = true;
+};
+
+const openFormForDay = (dateStr) => {
+  openForm(dateStr);
 };
 
 const closeForm = () => {
@@ -454,6 +479,7 @@ const resetForm = () => {
 
 const submitForm = async () => {
   errorMessage.value = "";
+  operationError.value = "";
 
   // Frontend validation for time
   if (form.time && form.end_time && form.time >= form.end_time) {
@@ -484,27 +510,46 @@ const submitForm = async () => {
 };
 
 const startEdit = (slot) => {
+  errorMessage.value = "";
   showForm.value = true;
   editingId.value = slot.id;
   form.ta_name = slot.ta_name;
   form.location = slot.location;
   form.date = slot.date;
-  form.time = slot.time.slice(0, 5);
+  form.time = slot.time ? slot.time.slice(0, 5) : "";
   if (slot.end_time) {
     form.end_time = slot.end_time.slice(0, 5);
-  } else {
+  } else if (slot.time) {
     // backward-compatible default if older rows exist
     form.end_time = guessEndTime(slot.time, slot.duration_minutes ?? 60);
+  } else {
+    form.end_time = "";
   }
 };
 
-const remove = async (id) => {
-  await api.delete(`/office-hours/${id}`);
-  removeOfficeHourFromStore(id);
-  if (selectedSlot.value?.id === id) {
-    closeSessionModal();
+const remove = async (id, { skipConfirm = false } = {}) => {
+  if (
+    !skipConfirm &&
+    !confirm("Delete this office hour? This cannot be undone.")
+  ) {
+    return;
   }
-  await fetchOfficeHours();
+  errorMessage.value = "";
+  operationError.value = "";
+  try {
+    await api.delete(`/office-hours/${id}`);
+    removeOfficeHourFromStore(id);
+    if (selectedSlot.value?.id === id) {
+      closeSessionModal();
+    }
+    await fetchOfficeHours();
+  } catch (error) {
+    console.error("Failed to delete office hour:", error);
+    operationError.value =
+      error.response?.data?.message ||
+      "Could not delete this office hour. If you are staff, ensure your account is allowed as TA or professor on the server (Cognito groups or COGNITO_*_ALLOWLIST).";
+    saveSuccess.value = false;
+  }
 };
 
 const toggleJoin = async (id) => {
@@ -570,7 +615,7 @@ const quickDeleteFromModal = async () => {
   if (!confirm("Delete this office hour?")) return;
   const id = selectedSlot.value.id;
   closeSessionModal();
-  await remove(id);
+  await remove(id, { skipConfirm: true });
 };
 
 const checkInStudent = async (slot, signup) => {

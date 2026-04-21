@@ -19,6 +19,7 @@ const LS_EXTRA_PROFESSOR = "notifix_extra_professor_emails";
 export const DEFAULT_TA_EMAILS = [
   "xfw9vp@virginia.edu",
   "uhu5nr@virginia.edu",
+  "khg5bj@virginia.edu",
 ];
 
 /** Built-in professor accounts (cannot be removed from dashboard). */
