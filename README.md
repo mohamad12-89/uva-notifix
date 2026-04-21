@@ -136,9 +136,9 @@ Defaults in `resources/js/composables/useAuthProfile.js`:
 
 **TA** (staff tools, no Instructor Dashboard):
 
-- `khg5bj@virginia.edu`
 - `xfw9vp@virginia.edu`
 - `uhu5nr@virginia.edu`
+- `amq6tv@virginia.edu`
 
 Primary role source is Cognito groups (`student`, `ta`, `professor`). Allowlists are fallback when group assignment has not yet been applied.
 

@@ -8,7 +8,7 @@
 $defaultTaAllowlist = [
     'xfw9vp@virginia.edu',
     'uhu5nr@virginia.edu',
-    'khg5bj@virginia.edu',
+    'amq6tv@virginia.edu',
 ];
 
 $defaultProfessorAllowlist = [
