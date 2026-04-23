@@ -27,7 +27,7 @@
               formatDate(announcement.created_at)
             }}</span>
             <button
-              v-if="isTaProfessor"
+              v-if="isProfessor"
               type="button"
               class="rounded-md border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-medium text-red-300 transition hover:bg-red-500/30"
               @click="confirmDelete(announcement)"
@@ -110,7 +110,7 @@ import {
 } from "../composables/useOfficeHours";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
-const { isTaProfessor, isStudent, authProfile } = useAuthProfile();
+const { isProfessor, isStudent, authProfile } = useAuthProfile();
 
 const announcements = ref([]);
 const loading = ref(true);
