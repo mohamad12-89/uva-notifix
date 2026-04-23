@@ -22,6 +22,7 @@ Route::middleware('cognito.auth')->group(function () {
     Route::get('/office-hours/{officeHour}/signups', [OfficeHourController::class, 'signups'])->middleware('role:ta,professor');
     Route::post('/office-hours/{officeHour}/signups/{signup}/check-in', [OfficeHourController::class, 'checkIn'])->middleware('role:ta,professor');
     Route::get('/analytics/office-hours', [OfficeHourController::class, 'analytics'])->middleware('role:professor');
+    Route::get('/analytics/join-times', [OfficeHourController::class, 'joinTimesAnalytics'])->middleware('role:ta,professor');
 
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::post('/announcements', [AnnouncementController::class, 'store'])->middleware('role:professor');

@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage.vue";
 import OfficeHoursPage from "./pages/OfficeHoursPage.vue";
 import AppointmentsPage from "./pages/AppointmentsPage.vue";
 import TaBiosPage from "./pages/TaBiosPage.vue";
+import TaDashboardPage from "./pages/TaDashboardPage.vue";
 import AccountPage from "./pages/AccountPage.vue";
 import InstructorDashboard from "./pages/InstructorDashboard.vue";
 import AnnouncementsPage from "./pages/AnnouncementsPage.vue";
@@ -34,6 +35,7 @@ const router = createRouter({
     { path: "/office-hours", component: OfficeHoursPage },
     { path: "/appointments", component: AppointmentsPage },
     { path: "/ta-bios", component: TaBiosPage },
+    { path: "/ta-dashboard", component: TaDashboardPage },
     { path: "/account", component: AccountPage },
     { path: "/profile", component: ProfilePage },
     { path: "/instructor-dashboard", component: InstructorDashboard },
@@ -53,6 +55,9 @@ router.beforeEach(async (to) => {
 
   if (to.path === "/instructor-dashboard") {
     if (profile?.role !== "professor") return "/";
+  }
+  if (to.path === "/ta-dashboard") {
+    if (profile?.role !== "ta") return "/";
   }
   return true;
 });

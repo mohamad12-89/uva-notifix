@@ -48,13 +48,14 @@ import { useRoute } from "vue-router";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
 const route = useRoute();
-const { initials, authProfile, isProfessor } = useAuthProfile();
+const { initials, authProfile, isProfessor, isTa } = useAuthProfile();
 
 const navItems = [
   { to: "/announcements", label: "Announcements" },
   { to: "/office-hours", label: "Office Hours" },
   { to: "/appointments", label: "Appointments" },
   { to: "/ta-bios", label: "TA Bios" },
+  { to: "/ta-dashboard", label: "TA Dashboard" },
   { to: "/instructor-dashboard", label: "Instructor Dashboard" },
   { to: "/account", label: "Account" },
 ];
@@ -64,6 +65,7 @@ const visibleNavItems = computed(() => {
   if (!isVerified) return [];
   return navItems.filter((item) => {
     if (item.to === "/account") return false;
+    if (item.to === "/ta-dashboard" && !isTa.value) return false;
     if (item.to === "/instructor-dashboard" && !isProfessor.value) return false;
     return true;
   });

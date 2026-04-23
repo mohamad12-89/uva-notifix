@@ -215,7 +215,24 @@ class OfficeHourController extends Controller
             ->orderByDesc('last_signup_at')
             ->get();
 
-        // Weekly join-time demand based on actual join actions (created_at), not check-ins.
+        ['weeklyJoinHeatmap' => $weeklyJoinHeatmap, 'weeklyJoinPeaks' => $weeklyJoinPeaks] = $this->buildWeeklyJoinAnalytics();
+
+        return response()->json([
+            'analytics' => $analytics,
+            'activeSessions' => $activeSessions,
+            'studentStats' => $studentStats,
+            'weeklyJoinHeatmap' => $weeklyJoinHeatmap,
+            'weeklyJoinPeaks' => $weeklyJoinPeaks,
+        ]);
+    }
+
+    public function joinTimesAnalytics()
+    {
+        return response()->json($this->buildWeeklyJoinAnalytics());
+    }
+
+    private function buildWeeklyJoinAnalytics(): array
+    {
         $weekdayMap = [
             1 => 'Mon',
             2 => 'Tue',
@@ -265,12 +282,9 @@ class OfficeHourController extends Controller
             ->values()
             ->all();
 
-        return response()->json([
-            'analytics' => $analytics,
-            'activeSessions' => $activeSessions,
-            'studentStats' => $studentStats,
+        return [
             'weeklyJoinHeatmap' => $weeklyJoinHeatmap,
             'weeklyJoinPeaks' => $weeklyJoinPeaks,
-        ]);
+        ];
     }
 }
