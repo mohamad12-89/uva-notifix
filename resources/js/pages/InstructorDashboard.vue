@@ -145,12 +145,141 @@
 
       <div class="mt-8 space-y-4">
         <h4 class="font-medium text-slate-200">
+          Weekly Busiest Join Times (Student Join Actions)
+        </h4>
+        <p class="text-sm text-slate-400">
+          Suggested office-hour windows based on when students actually join sessions.
+        </p>
+        <div
+          class="rounded-lg border border-white/10 bg-slate-900/50 p-4"
+        >
+          <div v-if="weeklyJoinHeatmap.length" class="space-y-4">
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="day in weekdayLabels"
+                :key="day.num"
+                type="button"
+                class="rounded border px-3 py-1 text-xs font-semibold transition"
+                :class="
+                  selectedJoinDay === day.num
+                    ? 'border-uva-orange bg-uva-orange/20 text-uva-orange'
+                    : 'border-white/20 bg-slate-800/50 text-slate-300 hover:border-uva-orange/50'
+                "
+                @click="selectedJoinDay = day.num"
+              >
+                {{ day.short }}
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <div class="min-w-[760px]">
+                <div class="mb-2 flex gap-2">
+                  <div class="h-48 w-10 shrink-0 pb-3 pt-5">
+                    <div class="relative h-full">
+                      <div
+                        v-for="tick in chartScaleTicks"
+                        :key="`tick-${tick}`"
+                        class="absolute right-0 -translate-y-1/2 text-[10px] leading-none text-slate-400"
+                        :style="{
+                          top: `calc(${100 - (tick / CHART_SCALE_MAX) * 100}% + ${chartVerticalOffsetPx}px)`,
+                        }"
+                      >
+                        {{ tick }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="relative h-48 flex-1 rounded border border-white/10 bg-slate-950/50 p-3">
+                    <div class="pointer-events-none absolute bottom-3 left-3 right-3 top-5">
+                      <div
+                        v-for="tick in chartScaleTicks"
+                        :key="`grid-${tick}`"
+                        class="absolute left-0 right-0 border-t border-white/10"
+                        :style="{
+                          top: `calc(${100 - (tick / CHART_SCALE_MAX) * 100}% + ${chartVerticalOffsetPx}px)`,
+                        }"
+                      ></div>
+                    </div>
+                    <div class="absolute bottom-3 left-3 right-3 top-5 z-10 flex items-stretch gap-2">
+                      <div
+                        v-for="bar in selectedDayBarsWithHeight"
+                        :key="bar.hour"
+                        class="flex h-full flex-1 flex-col items-center justify-end"
+                      >
+                        <div
+                          class="w-full rounded-t bg-gradient-to-t from-uva-blue to-uva-orange"
+                          :style="{
+                            height: `${bar.heightPct}%`,
+                            minHeight: bar.joinCount > 0 ? '6px' : '0px',
+                          }"
+                          :title="`${selectedJoinDayLabel} ${bar.label}: ${bar.joinCount} joins`"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <div class="w-10 shrink-0"></div>
+                  <div
+                    v-for="bar in selectedDayBarsWithHeight"
+                    :key="`${bar.hour}-label`"
+                    class="flex-1 text-center text-[10px] text-slate-400"
+                  >
+                    {{ bar.shortLabel }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-sm text-slate-300">
+              <span class="font-semibold text-white">Suggestion:</span>
+              <span v-if="busiestSelectedDayBar">
+                {{ selectedJoinDayLabel }} {{ busiestSelectedDayBar.label }} is the busiest slot with
+                <span class="font-semibold text-uva-orange">
+                  {{ busiestSelectedDayBar.joinCount }} joins
+                </span>
+              </span>
+              <span v-else>
+                No join data for {{ selectedJoinDayLabel }} yet.
+              </span>
+            </p>
+
+            <div v-if="weeklyJoinPeaks.length">
+              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Top Suggested Slots
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="slot in weeklyJoinPeaks.slice(0, 6)"
+                  :key="slot.label"
+                  class="rounded border border-uva-orange/40 bg-uva-orange/15 px-2 py-1 text-xs text-uva-orange"
+                >
+                  {{ slot.label }} ({{ slot.join_count }})
+                </span>
+              </div>
+            </div>
+          </div>
+          <p v-else class="text-sm text-slate-400">
+            Not enough join data yet.
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-8 space-y-4">
+        <h4 class="font-medium text-slate-200">
           Student Signups vs Checked-In Attendance
         </h4>
+        <div class="max-w-md">
+          <input
+            v-model.trim="studentSearch"
+            type="text"
+            class="input w-full"
+            placeholder="Search student name or email..."
+          />
+        </div>
         <div
-          class="overflow-hidden rounded-lg border border-white/10 bg-slate-900/50"
+          class="max-h-80 overflow-auto rounded-lg border border-white/10 bg-slate-900/50"
         >
-          <table class="w-full text-left text-sm text-slate-300">
+          <table class="w-full text-left text-xs text-slate-300">
             <thead
               class="border-b border-white/10 bg-slate-800/50 text-xs uppercase text-slate-400"
             >
@@ -163,7 +292,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="student in studentStats"
+                v-for="student in filteredRecentStudentStats"
                 :key="student.student_email"
                 class="border-b border-white/5 hover:bg-white/5"
               >
@@ -174,14 +303,17 @@
                 <td class="px-4 py-3 text-right">{{ student.signed_up_count }}</td>
                 <td class="px-4 py-3 text-right">{{ student.attended_count }}</td>
               </tr>
-              <tr v-if="!studentStats.length">
+              <tr v-if="!filteredRecentStudentStats.length">
                 <td colspan="4" class="px-4 py-8 text-center text-slate-500">
-                  No student signup data yet.
+                  No recent student entries found.
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p class="text-xs text-slate-500">
+          Showing the most recent {{ RECENT_STUDENT_LIMIT }} student entries.
+        </p>
       </div>
 
       <div class="mt-8 space-y-8">
@@ -336,6 +468,22 @@ const postSuccess = ref(false);
 const analyticsData = ref([]);
 const activeSessions = ref(0);
 const studentStats = ref([]);
+const weeklyJoinHeatmap = ref([]);
+const weeklyJoinPeaks = ref([]);
+const studentSearch = ref("");
+const RECENT_STUDENT_LIMIT = 20;
+const CHART_SCALE_MAX = 30;
+const chartVerticalOffsetPx = 0;
+const selectedJoinDay = ref(1);
+const weekdayLabels = [
+  { num: 1, short: "Mon", full: "Monday" },
+  { num: 2, short: "Tue", full: "Tuesday" },
+  { num: 3, short: "Wed", full: "Wednesday" },
+  { num: 4, short: "Thu", full: "Thursday" },
+  { num: 5, short: "Fri", full: "Friday" },
+  { num: 6, short: "Sat", full: "Saturday" },
+  { num: 7, short: "Sun", full: "Sunday" },
+];
 
 const taInput = ref("");
 const professorInput = ref("");
@@ -412,10 +560,80 @@ const fetchAnalytics = async () => {
       activeSessions.value = response.data.activeSessions;
     }
     studentStats.value = response.data.studentStats || [];
+    weeklyJoinHeatmap.value = response.data.weeklyJoinHeatmap || [];
+    weeklyJoinPeaks.value = response.data.weeklyJoinPeaks || [];
   } catch (error) {
     console.error("Failed to fetch analytics", error);
   }
 };
+
+const heatmapCounts = computed(() => {
+  const map = new Map();
+  for (const entry of weeklyJoinHeatmap.value) {
+    map.set(`${entry.weekday_num}-${entry.hour_24}`, Number(entry.join_count) || 0);
+  }
+  return map;
+});
+
+const hourAxis = computed(() => {
+  // Keep a consistent, fuller axis so professors can scan a realistic daily window.
+  const startHour = 6; // 6 AM
+  const endHour = 23; // 11 PM
+  return Array.from({ length: endHour - startHour + 1 }, (_, idx) => startHour + idx);
+});
+
+const formatHour = (hour24) => {
+  const suffix = hour24 >= 12 ? "PM" : "AM";
+  const h = hour24 % 12 || 12;
+  return `${h} ${suffix}`;
+};
+
+const selectedJoinDayLabel = computed(
+  () => weekdayLabels.find((d) => d.num === selectedJoinDay.value)?.full || "Selected day",
+);
+
+const selectedDayBars = computed(() => {
+  return hourAxis.value.map((hour) => {
+    const joinCount = heatmapCounts.value.get(`${selectedJoinDay.value}-${hour}`) || 0;
+    return {
+    hour,
+      label: formatHour(hour),
+      shortLabel: formatHour(hour).replace(" ", ""),
+      joinCount,
+      heightPct: 0,
+    };
+  });
+});
+
+const chartScaleTicks = [5, 10, 15, 20, 25, 30];
+
+const selectedDayBarsWithHeight = computed(() => {
+  return selectedDayBars.value.map((bar) => ({
+    ...bar,
+    heightPct: bar.joinCount
+      ? Math.round((Math.min(bar.joinCount, CHART_SCALE_MAX) / CHART_SCALE_MAX) * 100)
+      : 0,
+  }));
+});
+
+const busiestSelectedDayBar = computed(() =>
+  selectedDayBars.value.reduce(
+    (max, item) => (item.joinCount > (max?.joinCount || 0) ? item : max),
+    null,
+  ),
+);
+
+const filteredRecentStudentStats = computed(() => {
+  const q = studentSearch.value.toLowerCase();
+  const list = studentStats.value || [];
+  const filtered = q
+    ? list.filter((s) => {
+        const hay = `${s.student_name || ""} ${s.student_email || ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+    : list;
+  return filtered.slice(0, RECENT_STUDENT_LIMIT);
+});
 
 const totalAttendance = computed(() => {
   return analyticsData.value.reduce((sum, item) => sum + item.attendance, 0);

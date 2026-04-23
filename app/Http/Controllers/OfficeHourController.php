@@ -210,14 +210,67 @@ class OfficeHourController extends Controller
             ->selectRaw('student_email, MAX(student_name) as student_name')
             ->selectRaw('COUNT(*) as signed_up_count')
             ->selectRaw('SUM(CASE WHEN checked_in_at IS NOT NULL THEN 1 ELSE 0 END) as attended_count')
+            ->selectRaw('MAX(created_at) as last_signup_at')
             ->groupBy('student_email')
-            ->orderByDesc('signed_up_count')
+            ->orderByDesc('last_signup_at')
             ->get();
+
+        // Weekly join-time demand based on actual join actions (created_at), not check-ins.
+        $weekdayMap = [
+            1 => 'Mon',
+            2 => 'Tue',
+            3 => 'Wed',
+            4 => 'Thu',
+            5 => 'Fri',
+            6 => 'Sat',
+            7 => 'Sun',
+        ];
+        $weeklyJoinHeatmap = OfficeHourSignup::query()
+            ->whereNotNull('created_at')
+            ->get(['created_at'])
+            ->map(function ($signup) use ($weekdayMap) {
+                // Bucket joins in UVA local time so day/hour analytics match professor expectations.
+                $dt = Carbon::parse($signup->created_at)->setTimezone('America/New_York');
+                $weekdayNum = (int) $dt->isoWeekday();
+                $hour24 = (int) $dt->format('G');
+                $hourLabel = $dt->format('g A');
+                return [
+                    'bucket_key' => sprintf('%d-%02d', $weekdayNum, $hour24),
+                    'weekday_num' => $weekdayNum,
+                    'weekday' => $weekdayMap[$weekdayNum] ?? 'N/A',
+                    'hour_24' => $hour24,
+                    'hour_label' => $hourLabel,
+                    'label' => sprintf('%s %s', $weekdayMap[$weekdayNum] ?? 'N/A', $hourLabel),
+                ];
+            })
+            ->groupBy('bucket_key')
+            ->map(function ($items) {
+                $first = $items->first();
+                return [
+                    'label' => $first['label'],
+                    'weekday_num' => $first['weekday_num'],
+                    'hour_24' => $first['hour_24'],
+                    'join_count' => $items->count(),
+                ];
+            })
+            ->sortBy('weekday_num')
+            ->sortBy('hour_24')
+            ->values()
+            ->all();
+
+        $weeklyJoinPeaks = collect($weeklyJoinHeatmap)
+            ->sortByDesc('join_count')
+            ->values()
+            ->take(12)
+            ->values()
+            ->all();
 
         return response()->json([
             'analytics' => $analytics,
             'activeSessions' => $activeSessions,
             'studentStats' => $studentStats,
+            'weeklyJoinHeatmap' => $weeklyJoinHeatmap,
+            'weeklyJoinPeaks' => $weeklyJoinPeaks,
         ]);
     }
 }
