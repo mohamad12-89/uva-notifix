@@ -13,7 +13,7 @@
         Profile Settings
       </h2>
       <p class="mb-5 text-center text-sm text-slate-300">
-        Update your personal information and password.
+        Update your personal information.
       </p>
 
       <form class="space-y-3" @submit.prevent="saveProfile">
@@ -29,33 +29,15 @@
           class="input w-full"
           placeholder="Last name"
         />
-        <input
-          v-model.trim="form.email"
-          readonly
-          class="input w-full opacity-80"
-          placeholder="UVA email"
-        />
-
-        <input
-          v-model="form.currentPassword"
-          class="input w-full"
-          type="password"
-          placeholder="Current password"
-        />
-        <input
-          v-model="form.newPassword"
-          class="input w-full"
-          type="password"
-          placeholder="New password"
-          minlength="6"
-        />
-        <input
-          v-model="form.confirmPassword"
-          class="input w-full"
-          type="password"
-          placeholder="Confirm new password"
-          minlength="6"
-        />
+        <div>
+          <label class="mb-1 block text-sm font-medium text-slate-300">Email</label>
+          <input
+            :value="form.email"
+            readonly
+            class="input w-full cursor-not-allowed opacity-80"
+            placeholder="UVA email"
+          />
+        </div>
 
         <button class="button-primary mt-2 w-full" type="submit">
           Save Changes
@@ -78,7 +60,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import {
-  changePasswordAuth,
   refreshAuthProfile,
   signOutAuth,
   updateLocalProfile,
@@ -100,9 +81,6 @@ const form = reactive({
   firstName: "",
   lastName: "",
   email: "",
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
 });
 
 onMounted(() => {
@@ -125,49 +103,15 @@ async function saveProfile() {
     return;
   }
 
-  const wantsPasswordChange = Boolean(
-    form.currentPassword || form.newPassword || form.confirmPassword,
-  );
-
-  if (wantsPasswordChange) {
-    if (!form.currentPassword) {
-      error.value = "Current password is required to change password.";
-      return;
-    }
-    if (!form.newPassword || !form.confirmPassword) {
-      error.value = "Please fill out all new password fields.";
-      return;
-    }
-    if (form.newPassword.length < 6) {
-      error.value = "New password must be at least 6 characters.";
-      return;
-    }
-    if (form.newPassword !== form.confirmPassword) {
-      error.value = "New password and confirmation do not match.";
-      return;
-    }
-  }
-
   try {
     await updateLocalProfile({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
     });
-    if (wantsPasswordChange) {
-      await changePasswordAuth({
-        currentPassword: form.currentPassword,
-        newPassword: form.newPassword,
-      });
-    }
 
     await refreshAuthProfile();
 
-    form.currentPassword = "";
-    form.newPassword = "";
-    form.confirmPassword = "";
-    message.value = wantsPasswordChange
-      ? "Profile and password updated successfully."
-      : "Profile updated successfully.";
+    message.value = "Profile updated successfully.";
   } catch (e) {
     error.value = e?.message || "Could not update profile right now.";
   }
