@@ -14,6 +14,8 @@ const AUTH_KEY = "notifix_auth_profile";
 const TOKENS_KEY = "notifix_auth_tokens";
 const LS_EXTRA_TA = "notifix_extra_ta_emails";
 const LS_EXTRA_PROFESSOR = "notifix_extra_professor_emails";
+const LS_SERVER_TA = "notifix_server_ta_emails";
+const LS_SERVER_PROFESSOR = "notifix_server_professor_emails";
 
 /** Built-in TA accounts (cannot be removed from dashboard). */
 export const DEFAULT_TA_EMAILS = [
@@ -33,6 +35,8 @@ const authReady = ref(false);
 const authError = ref("");
 let initialized = false;
 let storageListenerAttached = false;
+let roleRefreshListenersAttached = false;
+let lastServerRegistryFetchMs = 0;
 
 let client = null;
 
@@ -113,14 +117,36 @@ function writeExtraList(key, list) {
   localStorage.setItem(key, JSON.stringify(unique));
 }
 
+function readServerList(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.map(normalizeEmail).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeServerList(key, list) {
+  const unique = [...new Set(list.map(normalizeEmail).filter(Boolean))];
+  localStorage.setItem(key, JSON.stringify(unique));
+}
+
 export function getTaEmailSet() {
   const extras = readExtraList(LS_EXTRA_TA);
-  return new Set([...DEFAULT_TA_EMAILS.map(normalizeEmail), ...extras]);
+  const server = readServerList(LS_SERVER_TA);
+  return new Set([...DEFAULT_TA_EMAILS.map(normalizeEmail), ...extras, ...server]);
 }
 
 export function getProfessorEmailSet() {
   const extras = readExtraList(LS_EXTRA_PROFESSOR);
-  return new Set([...DEFAULT_PROFESSOR_EMAILS.map(normalizeEmail), ...extras]);
+  const server = readServerList(LS_SERVER_PROFESSOR);
+  return new Set([
+    ...DEFAULT_PROFESSOR_EMAILS.map(normalizeEmail),
+    ...extras,
+    ...server,
+  ]);
 }
 
 /** Sorted list for display: { email, isDefault } */
@@ -217,8 +243,34 @@ function roleFromGroupsOrEmail(groups, email) {
     : [];
   if (normalizedGroups.includes("professor")) return "professor";
   if (normalizedGroups.includes("ta")) return "ta";
+  // Allowlist fallback must be checked before defaulting to student.
+  const allowlistRole = roleFromEmail(email);
+  if (allowlistRole !== "student") return allowlistRole;
   if (normalizedGroups.includes("student")) return "student";
-  return roleFromEmail(email);
+  return "student";
+}
+
+async function refreshRoleRegistryFromApi(tokens) {
+  if (!tokens?.idToken && !tokens?.accessToken) return;
+  const now = Date.now();
+  if (now - lastServerRegistryFetchMs < 15000) return;
+  lastServerRegistryFetchMs = now;
+
+  try {
+    const bearer = tokens.idToken || tokens.accessToken;
+    const response = await fetch("/api/instructor/role-registry", {
+      headers: { Authorization: `Bearer ${bearer}` },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    writeServerList(LS_SERVER_TA, Array.isArray(data?.ta) ? data.ta : []);
+    writeServerList(
+      LS_SERVER_PROFESSOR,
+      Array.isArray(data?.professor) ? data.professor : [],
+    );
+  } catch {
+    // Ignore network issues and keep local role cache.
+  }
 }
 
 function persistProfile(profile) {
@@ -257,6 +309,8 @@ export async function refreshAuthProfile() {
     return authProfile.value;
   }
 
+  await refreshRoleRegistryFromApi(tokens);
+
   const claims = parseJwt(tokens.idToken);
   const exp = claims?.exp ? Number(claims.exp) * 1000 : 0;
   if (!claims || (exp && exp <= Date.now())) {
@@ -292,7 +346,24 @@ export async function initializeAuth() {
   if (!storageListenerAttached && typeof window !== "undefined") {
     storageListenerAttached = true;
     window.addEventListener("storage", (e) => {
-      if (e.key === LS_EXTRA_TA || e.key === LS_EXTRA_PROFESSOR) {
+      if (
+        e.key === LS_EXTRA_TA ||
+        e.key === LS_EXTRA_PROFESSOR ||
+        e.key === LS_SERVER_TA ||
+        e.key === LS_SERVER_PROFESSOR
+      ) {
+        refreshAuthProfile();
+      }
+    });
+  }
+
+  if (!roleRefreshListenersAttached && typeof window !== "undefined") {
+    roleRefreshListenersAttached = true;
+    window.addEventListener("focus", () => {
+      refreshAuthProfile();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
         refreshAuthProfile();
       }
     });
@@ -411,6 +482,10 @@ export async function signInWithEmailPassword({ email, password }) {
     idToken: auth.IdToken,
     accessToken: auth.AccessToken,
     refreshToken: auth.RefreshToken || "",
+  });
+  await refreshRoleRegistryFromApi({
+    idToken: auth.IdToken,
+    accessToken: auth.AccessToken,
   });
 
   const claims = parseJwt(auth.IdToken) || {};

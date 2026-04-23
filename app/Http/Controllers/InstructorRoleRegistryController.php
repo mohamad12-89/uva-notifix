@@ -2,12 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\RoleRegistryAllowlist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 
 class InstructorRoleRegistryController extends Controller
 {
+    /**
+     * Return the current merged role registry so clients can refresh role mapping.
+     */
+    public function index(): JsonResponse
+    {
+        $extras = RoleRegistryAllowlist::extras();
+        $ta = array_values(array_unique(array_merge(
+            (array) config('cognito.ta_allowlist', []),
+            $extras['ta'],
+        )));
+        $professor = array_values(array_unique(array_merge(
+            (array) config('cognito.professor_allowlist', []),
+            $extras['professor'],
+        )));
+
+        return response()->json([
+            'ta' => $ta,
+            'professor' => $professor,
+        ]);
+    }
+
     /**
      * Persist TA/professor email lists from the SPA so Laravel role checks match the dashboard.
      */

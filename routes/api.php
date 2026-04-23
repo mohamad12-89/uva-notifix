@@ -9,6 +9,7 @@ use App\Http\Controllers\TaBioController;
 use Illuminate\Support\Facades\Route;
  
 Route::middleware('cognito.auth')->group(function () {
+    Route::get('/instructor/role-registry', [InstructorRoleRegistryController::class, 'index']);
     Route::post('/instructor/sync-role-registry', [InstructorRoleRegistryController::class, 'sync'])
         ->middleware('role:professor');
 
