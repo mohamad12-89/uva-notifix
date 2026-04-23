@@ -12,5 +12,6 @@ class TaBio extends Model
         'major',
         'email',
         'notes',
+        'profile_image_path',
     ];
 }

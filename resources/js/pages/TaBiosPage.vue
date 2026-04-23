@@ -27,6 +27,34 @@
         class="input md:col-span-2"
         placeholder="Notes"
       />
+      <div class="md:col-span-2">
+        <label class="mb-1 block text-sm font-medium text-slate-200">
+          Profile picture (optional)
+        </label>
+        <div class="flex items-center gap-4">
+          <img
+            :src="formPreviewUrl || defaultAvatarUrl"
+            alt="Profile preview"
+            class="h-16 w-16 rounded-full border border-white/20 object-cover"
+          />
+          <div class="flex-1 space-y-2">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              class="input w-full"
+              @change="onImageSelected"
+            />
+            <button
+              v-if="formPreviewUrl"
+              type="button"
+              class="rounded bg-slate-700 px-3 py-1 text-xs text-white"
+              @click="clearSelectedImage"
+            >
+              Remove selected image
+            </button>
+          </div>
+        </div>
+      </div>
       <button class="button-primary md:col-span-2" type="submit">
         Save TA Bio
       </button>
@@ -34,12 +62,19 @@
 
     <div class="grid grid-cols-1 gap-4">
       <div v-for="bio in bios" :key="bio.id" class="card p-5">
-        <div class="flex w-full justify-between gap-4">
-          <div>
+        <div class="flex w-full items-start justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <img
+              :src="bio.profile_image_url || defaultAvatarUrl"
+              :alt="`${bio.name} avatar`"
+              class="h-14 w-14 rounded-full border border-white/20 object-cover"
+            />
+            <div>
             <p class="text-lg font-semibold text-white">{{ bio.name }}</p>
             <p class="text-sm text-slate-200">
               {{ bio.year }} | {{ bio.major }}
             </p>
+          </div>
           </div>
           <div class="ml-auto text-right text-sm text-slate-100">
             <p>{{ bio.email }}</p>
@@ -74,11 +109,15 @@ import { api } from "../lib/api";
 import { useAuthProfile } from "../composables/useAuthProfile";
 
 const { isTaProfessor, authProfile, isProfessor } = useAuthProfile();
+const defaultAvatarUrl = "/default-ta-avatar.svg";
 
 const showForm = ref(false);
 const editingId = ref(null);
 const bios = ref([]);
 const form = reactive({ name: "", year: "", major: "", email: "", notes: "" });
+const selectedImage = ref(null);
+const formPreviewUrl = ref("");
+const clearExistingImage = ref(false);
 
 const hasExistingBio = computed(() => {
   if (!authProfile.value?.email) return false;
@@ -106,10 +145,37 @@ const resetForm = () => {
   form.email = authProfile.value?.email || "";
   form.notes = "";
   editingId.value = null;
+  selectedImage.value = null;
+  formPreviewUrl.value = "";
+  clearExistingImage.value = false;
+};
+
+const onImageSelected = (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  selectedImage.value = file;
+  formPreviewUrl.value = URL.createObjectURL(file);
+  clearExistingImage.value = false;
+};
+
+const clearSelectedImage = () => {
+  selectedImage.value = null;
+  formPreviewUrl.value = "";
+  clearExistingImage.value = true;
 };
 
 const submit = async () => {
-  const payload = { ...form };
+  const payload = new FormData();
+  payload.append("name", form.name);
+  payload.append("year", form.year);
+  payload.append("major", form.major);
+  payload.append("email", form.email);
+  payload.append("notes", form.notes ?? "");
+  payload.append("clear_profile_image", clearExistingImage.value ? "1" : "0");
+  if (selectedImage.value) {
+    payload.append("profile_image", selectedImage.value);
+  }
+
   if (editingId.value) {
     const bioToUpdate = bios.value.find((b) => b.id === editingId.value);
     if (
@@ -119,7 +185,7 @@ const submit = async () => {
       console.error("Permission denied to update this bio.");
       return;
     }
-    await api.put(`/ta-bios/${editingId.value}`, payload);
+    await api.post(`/ta-bios/${editingId.value}?_method=PUT`, payload);
   } else {
     if (!canAddBio.value) {
       console.error("Permission denied to create a bio.");
@@ -144,6 +210,9 @@ const startEdit = (bio) => {
   form.major = bio.major;
   form.email = bio.email;
   form.notes = bio.notes ?? "";
+  selectedImage.value = null;
+  clearExistingImage.value = false;
+  formPreviewUrl.value = bio.profile_image_url || "";
 };
 
 const remove = async (id) => {
