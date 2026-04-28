@@ -9,9 +9,7 @@
       >.
     </p>
     <div>
-      <p :class="subtleClass">
-        For inquiries, you can reach out to:
-      </p>
+      <p :class="subtleClass">For inquiries, you can reach out to:</p>
       <ol :class="listClass">
         <li v-for="(email, idx) in inquiryEmails" :key="idx">
           <a
@@ -58,10 +56,10 @@ const props = defineProps({
 
 const adminEmail = "amm9km@virginia.edu";
 const inquiryEmails = [
-  "khg5bj@virginia.edu",
-  "cdd9sb@virginia.edu",
-  "xfw9vp@virginia.edu",
-  "uhu5nr@virginia.edu",
+  "Shivaths Karne: uhu5nr@virginia.edu",
+  "Dominic Quinn: khg5bj@virginia.edu",
+  "Muhammad Hussain: cdd9sb@virginia.edu",
+  "Andrew Lohman: xfw9vp@virginia.edu",
 ];
 const sdacUrl = "https://disabilityservices.studenthealth.virginia.edu/";
 const capsUrl = "https://mentalhealthservices.studenthealth.virginia.edu/";
