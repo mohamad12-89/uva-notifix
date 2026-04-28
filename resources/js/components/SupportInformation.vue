@@ -57,8 +57,8 @@ const props = defineProps({
 const adminEmail = "amm9km@virginia.edu";
 const inquiryEmails = [
   "Shivaths Karne: uhu5nr@virginia.edu",
-  "Dominic Quinn: khg5bj@virginia.edu",
   "Muhammad Hussain: cdd9sb@virginia.edu",
+  "Dominic Quinn: khg5bj@virginia.edu",
   "Andrew Lohman: xfw9vp@virginia.edu",
 ];
 const sdacUrl = "https://disabilityservices.studenthealth.virginia.edu/";
