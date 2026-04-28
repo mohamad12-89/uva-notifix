@@ -36,13 +36,28 @@ VITE_COGNITO_APP_CLIENT_ID=${COGNITO_APP_CLIENT_ID}
 
 ### 0) Prerequisites (install first)
 
-Your friend should install these before running the project:
+Run the following commands to install the required dependencies depending on your operating system:
 
-- Git
-- PHP 8.4+ (with `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`)
-- Composer 2.x
-- Node.js 20+ and npm
-- SQLite (or at least SQLite support enabled in PHP)
+**macOS (Homebrew):**
+
+```bash
+brew install git php composer node sqlite
+```
+
+**Ubuntu / Debian:**
+
+```bash
+sudo apt update
+sudo apt install -y git php8.4-cli php8.4-sqlite3 php8.4-mbstring php8.4-xml php8.4-curl unzip composer nodejs npm sqlite3
+```
+
+**Windows (Winget):**
+
+```powershell
+winget install Git.Git OpenJS.NodeJS Composer.Composer
+```
+
+_(For Windows, it is recommended to install PHP via Laravel Herd or download it from windows.php.net and enable the `pdo_sqlite`, `mbstring`, `openssl`, `xml`, `ctype`, and `json` extensions in your `php.ini`.)_
 
 Quick version checks:
 
